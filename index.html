@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>기계약DB 배정 시스템</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- ============================ 로그인 ============================ -->
+  <main class="card" id="login-view">
+    <header class="card-header" style="justify-content:center;text-align:center">
+      <div>
+        <span class="brand">기계약DB</span>
+        <h1 class="title">기계약DB 배정 시스템</h1>
+        <p class="subtitle">본부 · 이름 · 휴대폰번호로 본인 확인 후 이용합니다</p>
+      </div>
+    </header>
+    <div class="login">
+      <div class="loading" id="l-loading"><div class="spinner"></div><span>서버 연결 중…</span></div>
+      <div class="fields" id="l-form" hidden>
+        <div class="field">
+          <label for="l-hq">소속 본부 <span class="req">*</span></label>
+          <select id="l-hq"><option value="">선택하세요</option></select>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label for="l-name">이름 <span class="req">*</span></label>
+            <input id="l-name" placeholder="홍길동" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="l-phone">휴대폰번호 <span class="req">*</span></label>
+            <input id="l-phone" class="mono" inputmode="numeric" placeholder="010-0000-0000" autocomplete="off">
+          </div>
+        </div>
+        <div class="err" id="l-err" hidden></div>
+        <button class="btn" type="button" id="l-go">본인 확인하고 들어가기</button>
+        <span class="helper">휴대폰번호는 서버에 원문으로 저장되지 않고 해시값으로만 대조합니다. 5회 연속 실패 시 30분간 잠깁니다.</span>
+        <div style="text-align:center"><button class="inline-link" type="button" id="l-admin-toggle">관리자 비밀번호로 로그인</button></div>
+        <div class="fields" id="l-admin" hidden>
+          <div class="row2">
+            <div class="field"><label for="l-aname">담당자 이름</label><input id="l-aname" placeholder="담당자"></div>
+            <div class="field"><label for="l-apw">관리자 비밀번호</label><input id="l-apw" type="password" autocomplete="current-password"></div>
+          </div>
+          <button class="btn-ghost" type="button" id="l-ago">관리자로 들어가기</button>
+          <span class="helper">비밀번호는 스프레드시트 config 탭의 admin_password 값입니다.</span>
+        </div>
+      </div>
+      <div class="err" id="l-boot-err" hidden></div>
+    </div>
+  </main>
+
+  <!-- ============================ 본 화면 ============================ -->
+  <main class="card" id="main-view" hidden>
+    <header class="card-header">
+      <div style="min-width:0">
+        <span class="brand">기계약DB</span>
+        <h1 class="title">기계약DB 배정 시스템</h1>
+        <p class="subtitle" id="m-sub">—</p>
+      </div>
+      <div class="who">
+        <div style="min-width:0">
+          <div class="nm" id="w-name">—</div>
+          <div class="rl" id="w-scope">—</div>
+        </div>
+        <span class="role-chip" id="w-role">—</span>
+        <button type="button" id="w-out" title="로그아웃">나가기</button>
+      </div>
+    </header>
+
+    <div class="tabs" role="tablist" id="tabs">
+      <button class="tab" role="tab" data-panel="apply" aria-selected="true">신청</button>
+      <button class="tab" role="tab" data-panel="board" aria-selected="false">현황</button>
+      <button class="tab" role="tab" data-panel="feed" aria-selected="false">배정·피드백</button>
+      <button class="tab" role="tab" data-panel="sched" aria-selected="false">일정</button>
+      <button class="tab" role="tab" data-panel="stats" aria-selected="false" data-admin>효율</button>
+      <button class="tab" role="tab" data-panel="admin" aria-selected="false" data-admin>관리</button>
+    </div>
+
+    <section class="panel active" id="apply" role="tabpanel"></section>
+    <section class="panel" id="board" role="tabpanel"></section>
+    <section class="panel" id="feed" role="tabpanel"></section>
+    <section class="panel" id="sched" role="tabpanel"></section>
+    <section class="panel" id="stats" role="tabpanel"></section>
+    <section class="panel" id="admin" role="tabpanel"></section>
+  </main>
+
+  <p class="foot">기계약DB 배정 시스템 · 문의: 위촉지원실</p>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<input type="file" id="cam-input" accept="image/jpeg,image/png,image/webp" capture="environment" hidden>
+<input type="file" id="file-input" accept="application/pdf,image/jpeg,image/png,image/webp" hidden>
+<input type="file" id="fb-input" accept=".xlsx" hidden>
+<input type="file" id="adm-input" accept=".xlsx,.csv" hidden>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
