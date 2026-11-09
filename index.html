@@ -9,6 +9,25 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="css/app.css">
+<script>
+window.__diagLog = [];
+window.diag = function (m) {
+  var t = new Date().toTimeString().slice(0, 8);
+  window.__diagLog.push(t + '  ' + m);
+  if (window.console && console.debug) console.debug('[DB]', m);
+  var el = document.getElementById('l-diag');
+  if (el && !el.hidden) el.textContent = window.__diagLog.join(String.fromCharCode(10));
+};
+window.diagShow = function (m) {
+  if (m) diag(m);
+  var el = document.getElementById('l-diag');
+  if (el) { el.hidden = false; el.textContent = window.__diagLog.join(String.fromCharCode(10)); }
+};
+window.diagHide = function () { var el = document.getElementById('l-diag'); if (el) el.hidden = true; };
+window.addEventListener('error', function (e) { diagShow('오류: ' + (e.message || e.type) + (e.filename ? ' @' + e.filename.split('/').pop() + ':' + e.lineno : '')); }, true);
+window.addEventListener('unhandledrejection', function (e) { diagShow('처리되지 않은 오류: ' + (e.reason && e.reason.message || e.reason)); });
+setTimeout(function () { var l = document.getElementById('l-loading'); if (l && !l.hidden) diagShow('15초가 지나도 서버 응답이 없습니다. 주소: ' + location.href); }, 15000);
+</script>
 </head>
 <body>
 <div class="app">
@@ -24,6 +43,7 @@
     </header>
     <div class="login">
       <div class="loading" id="l-loading"><div class="spinner"></div><span>서버 연결 중…</span></div>
+      <pre id="l-diag" hidden style="font-size:11px;line-height:1.5;white-space:pre-wrap;color:#8a6d1f;background:#fff8e1;border:1px solid #f0d78c;border-radius:8px;padding:8px 10px;margin:8px 0"></pre>
       <div class="fields" id="l-form" hidden>
         <div class="field">
           <label for="l-hq">소속 본부 <span class="req">*</span></label>
@@ -101,8 +121,9 @@
 <input type="file" id="fb-input" accept=".xlsx" hidden>
 <input type="file" id="adm-input" accept=".xlsx,.csv" hidden>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/api.js"></script>
-<script src="js/app.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" onerror="diagShow('엑셀 라이브러리(cdnjs) 로드 실패')"></script>
+<script src="js/api.js" onerror="diagShow('api.js 로드 실패')"></script>
+<script src="js/app.js" onerror="diagShow('app.js 로드 실패')"></script>
+<script>diag("스크립트 로드 완료 (api.js " + (window.DB && DB.api ? "OK" : "없음") + ")");</script>
 </body>
 </html>

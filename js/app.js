@@ -50,7 +50,7 @@
       var sel = $('l-hq');
       info.hqs.forEach(function (h) { var o = document.createElement('option'); o.textContent = h; sel.appendChild(o); });
       if (!info.hqs.length) { var o2 = document.createElement('option'); o2.textContent = '(등록된 본부 없음)'; o2.disabled = true; sel.appendChild(o2); }
-      $('l-loading').hidden = true; $('l-form').hidden = false;
+      $('l-loading').hidden = true; $('l-form').hidden = false; if (window.diagHide) diagHide();
       if (DB.token()) { try { var b = await DB.api('me.bootstrap'); enterMain(b); } catch (e) { DB.setToken(''); } }
     } catch (e) {
       $('l-loading').hidden = true;
