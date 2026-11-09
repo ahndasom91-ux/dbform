@@ -199,7 +199,8 @@
       '<div class="kpi warn"><span class="kpi-label">제외 신청</span><span class="kpi-value mono">' + cnt.ex + '<small>건</small></span></div>' +
       '<div class="kpi"><span class="kpi-label">진행 중</span><span class="kpi-value mono">' + cnt.ing + '<small>건</small></span></div>' +
       '<div class="kpi"><span class="kpi-label">완료</span><span class="kpi-value mono">' + cnt.done + '<small>건</small></span></div></div>' +
-      '<div class="btn-row"><button class="btn" type="button" data-open="신규"' + (users.length ? '' : ' disabled') + '>산하 사용인 신규 신청</button><button class="btn-ghost" type="button" data-open="제외"' + (users.length ? '' : ' disabled') + '>산하 사용인 제외 신청</button></div></div>';
+      '<div class="btn-row"><button class="btn" type="button" data-open="신규"' + (users.length ? '' : ' data-empty="1"') + '>산하 사용인 신규 신청</button><button class="btn-ghost" type="button" data-open="제외"' + (users.length ? '' : ' data-empty="1"') + '>산하 사용인 제외 신청</button></div>' +
+      (users.length ? '' : '<p class="helper" style="color:var(--warn)">아직 ' + esc(S.boot.scope) + ' 범위에 등록된 사용인이 없습니다. 배정자 마스터(users)에 본부가 같은 「사용인」 역할의 사람이 올라와야 대리 신청할 수 있습니다.</p>') + '</div>';
     if (S.applyFormType) html += applyFormHtml(S.applyFormType, users);
     html += '<div class="table-wrap"><table><thead><tr><th>사용인</th><th>구분</th><th>접수일</th><th>희망지역</th><th>진행상태</th><th>사유 · 메모</th><th></th></tr></thead><tbody>';
     if (!rows.length) html += '<tr><td colspan="7" class="dash">범위 안에 등록된 사용인이 없습니다.</td></tr>';
@@ -217,7 +218,9 @@
 
   function bindApplyForm(data) {
     var el = $('apply');
-    el.querySelectorAll('[data-open]').forEach(function (b) { b.addEventListener('click', function () { S.applyFormType = b.dataset.open; S.pendingFile = null; renderApply().then(function () { var f = $('a-form'); if (f) f.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); }); });
+    el.querySelectorAll('[data-open]').forEach(function (b) { b.addEventListener('click', function () {
+      if (b.dataset.empty) { toast('산하에 등록된 사용인이 없어 대리 신청할 수 없습니다. 배정자 마스터에 본부가 같은 사용인을 먼저 등록해 주세요.', 'stop'); return; }
+      S.applyFormType = b.dataset.open; S.pendingFile = null; renderApply().then(function () { var f = $('a-form'); if (f) f.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); }); });
     el.querySelectorAll('[data-cancel]').forEach(function (b) { b.addEventListener('click', function () { cancelApplication(b.dataset.cancel); }); });
     var close = $('a-close'); if (close) close.addEventListener('click', function () { S.applyFormType = null; S.pendingFile = null; renderApply(); });
     var cam = $('a-cam'), fl = $('a-file');
