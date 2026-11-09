@@ -575,7 +575,7 @@
       '<div class="fields"><div class="field"><label for="c-form">신청서 양식 파일</label><div class="btn-row" style="margin:0"><button class="btn-ghost btn-sm" type="button" data-up="form">📎 양식 파일 업로드 (PDF·DOCX·XLSX)</button>' + (A.cfg.form_file_id ? '<a class="btn-ghost btn-sm" href="https://drive.google.com/file/d/' + esc(A.cfg.form_file_id) + '/view" target="_blank" rel="noopener" style="text-decoration:none">현재 양식 열기</a>' : '<span class="helper" style="color:var(--warn)">아직 등록된 양식이 없습니다</span>') + '</div>' +
       '<span class="helper">업로드하면 Drive 「양식」 폴더(<a class="link" href="' + esc(A.cfg.forms_folder_url) + '" target="_blank" rel="noopener">열기</a>)에 저장되고 링크 보기 권한으로 공유돼 사용인 화면의 「신청서 양식 열기」에 바로 연결됩니다. 직접 올린 파일은 아래 ID 칸에 붙여 넣어도 됩니다.</span>' +
       '<input id="c-form" class="mono" value="' + esc(A.cfg.form_file_id || '') + '" placeholder="Drive 파일 ID (링크의 /d/ 와 /view 사이)"></div>' +
-      '<div class="row3"><div class="field"><label for="c-regions">희망지역 목록 (쉼표, 표시 순서)</label><input id="c-regions" value="' + esc(A.cfg.regions || '') + '"></div>' +
+      '<div class="row3"><div class="field"><label for="c-regions">희망지역 목록 (쉼표, 표시 순서)</label><input id="c-regions" value="' + esc(A.cfg.regions || REGIONS.join(',')) + '"></div>' +
       '<div class="field"><label for="c-qty">기본 배정수량</label><input id="c-qty" class="mono" inputmode="numeric" value="' + esc(A.cfg.apply_qty_default || '18') + '"></div>' +
       '<div class="field"><label for="c-qtyrules">직책별 수량 (직책=수량, 쉼표)</label><input id="c-qtyrules" class="mono" value="' + esc(A.cfg.apply_qty_rules || '') + '" placeholder="예: SL=20,지점장=0"></div></div>' +
       '<div class="field"><label for="c-pw">관리자 비밀번호 변경 (8자 이상, 비우면 유지)</label><input id="c-pw" type="password" autocomplete="new-password"></div>' +
