@@ -130,14 +130,15 @@
       timelineHtml(a) +
       '<dl class="kv"><div class="kv-row"><dt>접수번호</dt><dd class="mono">' + esc(a.id) + '</dd></div>' +
       '<div class="kv-row"><dt>접수일</dt><dd class="mono">' + esc(a.date) + (a.by ? ' <span class="helper">· 대리 신청: ' + esc(a.by) + '</span>' : '') + '</dd></div>' +
-      (a.type === '제외' ? '<div class="kv-row"><dt>적용</dt><dd>다음 달부터 배정 중단</dd></div>' : '<div class="kv-row"><dt>희망지역</dt><dd>' + esc(a.regions) + ' · ' + a.qty + '건</dd></div>') +
+      (a.type === '제외' ? '<div class="kv-row"><dt>적용</dt><dd>다음 달부터 배정 중단</dd></div>' : '<div class="kv-row"><dt>희망지역</dt><dd>' + esc(String(a.regions).split(',').map(function (r, i) { return (i + 1) + '순위 ' + r.trim(); }).join(' · ')) + ' · 배정수량 ' + a.qty + '건</dd></div>') +
       '<div class="kv-row"><dt>신청서</dt><dd class="mono">' + esc(a.file) + ' <span class="helper">(Drive 저장됨)</span></dd></div></dl>' +
       (a.reason ? '<div class="reason"><b>' + (a.status === '반려' ? '반려 사유' : '처리 메모') + '</b><br>' + esc(a.reason) + '</div>' : '') +
       (opts.cancel && canCancel(a) ? '<div class="btn-row"><button class="btn-ghost btn-sm danger" type="button" data-cancel="' + esc(a.id) + '">신청 취소</button></div>' : '') +
       '</div>';
   }
   function regionOptions(blank) {
-    return (blank ? '<option value="">없음</option>' : '') + REGIONS.map(function (r) { return '<option>' + r + '</option>'; }).join('');
+    var list = (S.boot && S.boot.config && S.boot.config.regions && S.boot.config.regions.length) ? S.boot.config.regions : REGIONS;
+    return (blank ? '<option value="">없음</option>' : '') + list.map(function (r) { return '<option>' + esc(r) + '</option>'; }).join('');
   }
   function applyFormHtml(type, people) {
     var forManager = isManager();
@@ -154,12 +155,11 @@
       '<button class="upload-btn" type="button" id="a-file">📎 사진·파일 선택<small>PDF 또는 이미지</small></button></div><div id="a-filechip"></div></div>' +
       (type === '제외'
         ? '<div class="stepcard"><div class="sc-head"><div class="sc-no">3</div><div><div class="sc-title">제외 사유</div></div></div><div class="field"><textarea id="a-memo" placeholder="예: 다음 달부터 휴직 / 활동 중단"></textarea></div></div>'
-        : '<div class="stepcard"><div class="sc-head"><div class="sc-no">3</div><div><div class="sc-title">신청 정보</div><div class="sc-desc">배정 우선순위와 지역 매칭에 사용됩니다.</div></div></div>' +
+        : '<div class="stepcard"><div class="sc-head"><div class="sc-no">3</div><div><div class="sc-title">희망지역 (1~3순위)</div><div class="sc-desc">1순위부터 채워지고 부족하면 2·3순위로 넘어갑니다. 배정수량은 직책에 따라 자동 산정됩니다' + (forManager ? '' : ' (내 기준 ' + (S.boot.config.apply_qty || '') + '건)') + '.</div></div></div>' +
           '<div class="fields"><div class="row3">' +
-          '<div class="field"><label for="a-r1">희망지역 1순위 <span class="req">*</span></label><select id="a-r1">' + regionOptions(false) + '</select></div>' +
+          '<div class="field"><label for="a-r1">1순위 <span class="req">*</span></label><select id="a-r1">' + regionOptions(false) + '</select></div>' +
           '<div class="field"><label for="a-r2">2순위</label><select id="a-r2">' + regionOptions(true) + '</select></div>' +
-          '<div class="field"><label for="a-qty">희망수량 <span class="req">*</span></label><input id="a-qty" class="mono" inputmode="numeric" value="10"></div></div>' +
-          '<div class="field"><label for="a-memo">메모</label><textarea id="a-memo" placeholder="예: 보장분석 상담 목적. 둘째 주부터 활동 가능."></textarea></div></div></div>') +
+          '<div class="field"><label for="a-r3">3순위</label><select id="a-r3">' + regionOptions(true) + '</select></div></div></div></div>') +
       '<input type="hidden" id="a-type" value="' + type + '">' +
       '<div class="btn-row"><button class="btn" type="button" id="a-submit" disabled>' + (type === '제외' ? '제외 신청 제출' : '신청서 제출') + '</button><button class="btn-ghost" type="button" id="a-close" style="flex:0 0 auto">닫기</button></div>' +
       '<span class="helper">제출하면 파일은 Drive 「신청서/' + esc(month) + '」 폴더에 저장되고 접수번호가 발급됩니다. 이미지는 서버에서 PDF로 변환됩니다.</span></div>';
@@ -251,13 +251,14 @@
   async function submitApplication() {
     var type = $('a-type').value;
     if (!S.pendingFile) { toast('신청서 파일을 먼저 촬영하거나 첨부해 주세요.', 'stop'); return; }
-    var payload = { type: type, memo: ($('a-memo') && $('a-memo').value.trim()) || '' };
+    var payload = { type: type, memo: (type === '제외' && $('a-memo')) ? $('a-memo').value.trim() : '' };
     if (isManager()) payload.target_no = $('a-who').value;
     if (type !== '제외') {
-      var qty = parseInt($('a-qty').value, 10);
-      if (!(qty > 0)) { toast('희망수량을 숫자로 입력해 주세요.', 'stop'); return; }
-      payload.qty = qty;
-      payload.regions = $('a-r1').value + ($('a-r2').value ? ', ' + $('a-r2').value : '');
+      var regions = [$('a-r1').value, $('a-r2').value, $('a-r3').value].map(function (v) { return (v || '').trim(); }).filter(Boolean);
+      if (!regions.length) { toast('희망지역 1순위를 선택해 주세요.', 'stop'); return; }
+      var dup = regions.filter(function (r, i) { return regions.indexOf(r) !== i; });
+      if (dup.length) { toast('같은 지역을 두 번 선택했습니다: ' + dup[0], 'stop'); return; }
+      payload.regions = regions;
     }
     var btn = $('a-submit'); btn.disabled = true; btn.textContent = '업로드 중…';
     try {
@@ -571,7 +572,12 @@
     h += '<div class="sec"><h2 class="sec-title">설정</h2><div class="cfg-grid">' +
       '<div class="fields"><b style="font-size:12.5px">로그인 허용 역할 (config.enabled_roles)</b>' + ['본부장', '사업단장', '지점장', '사용인'].map(function (r) { return '<label class="switch"><input type="checkbox" data-role="' + r + '"' + (roles.indexOf(r) >= 0 ? ' checked' : '') + '> ' + r + ' 로그인 허용</label>'; }).join('') +
       '<label class="switch"><input type="checkbox" id="c-sitedl"' + (A.cfg.site_download === 'Y' ? ' checked' : '') + '> 배정목록 사이트 다운로드 (2차 · 현재 미구현, 안내 문구만 바뀜)</label><button class="btn-ghost btn-sm" type="button" id="c-roles-save">권한 저장</button></div>' +
-      '<div class="fields"><div class="field"><label for="c-form">신청서 양식 파일 ID (Drive 「양식」 폴더 <a class="link" href="' + esc(A.cfg.forms_folder_url) + '" target="_blank" rel="noopener">열기</a>)</label><input id="c-form" class="mono" value="' + esc(A.cfg.form_file_id || '') + '" placeholder="파일 링크의 /d/ 와 /view 사이 ID"></div>' +
+      '<div class="fields"><div class="field"><label for="c-form">신청서 양식 파일</label><div class="btn-row" style="margin:0"><button class="btn-ghost btn-sm" type="button" data-up="form">📎 양식 파일 업로드 (PDF·DOCX·XLSX)</button>' + (A.cfg.form_file_id ? '<a class="btn-ghost btn-sm" href="https://drive.google.com/file/d/' + esc(A.cfg.form_file_id) + '/view" target="_blank" rel="noopener" style="text-decoration:none">현재 양식 열기</a>' : '<span class="helper" style="color:var(--warn)">아직 등록된 양식이 없습니다</span>') + '</div>' +
+      '<span class="helper">업로드하면 Drive 「양식」 폴더(<a class="link" href="' + esc(A.cfg.forms_folder_url) + '" target="_blank" rel="noopener">열기</a>)에 저장되고 링크 보기 권한으로 공유돼 사용인 화면의 「신청서 양식 열기」에 바로 연결됩니다. 직접 올린 파일은 아래 ID 칸에 붙여 넣어도 됩니다.</span>' +
+      '<input id="c-form" class="mono" value="' + esc(A.cfg.form_file_id || '') + '" placeholder="Drive 파일 ID (링크의 /d/ 와 /view 사이)"></div>' +
+      '<div class="row3"><div class="field"><label for="c-regions">희망지역 목록 (쉼표, 표시 순서)</label><input id="c-regions" value="' + esc(A.cfg.regions || '') + '"></div>' +
+      '<div class="field"><label for="c-qty">기본 배정수량</label><input id="c-qty" class="mono" inputmode="numeric" value="' + esc(A.cfg.apply_qty_default || '18') + '"></div>' +
+      '<div class="field"><label for="c-qtyrules">직책별 수량 (직책=수량, 쉼표)</label><input id="c-qtyrules" class="mono" value="' + esc(A.cfg.apply_qty_rules || '') + '" placeholder="예: SL=20,지점장=0"></div></div>' +
       '<div class="field"><label for="c-pw">관리자 비밀번호 변경 (8자 이상, 비우면 유지)</label><input id="c-pw" type="password" autocomplete="new-password"></div>' +
       '<div class="field"><label for="c-results">컨택결과 허용값 (쉼표 구분)</label><input id="c-results" value="' + esc(A.cfg.feedback_results || '') + '"></div>' +
       '<div class="field"><label for="c-headers">피드백 열 제목 (쉼표 구분 · 순서 포함)</label><input id="c-headers" value="' + esc(A.cfg.feedback_headers || '') + '"></div>' +
@@ -664,7 +670,8 @@
       run(async function () { await call('admin.config', { set: { enabled_roles: roles.join(','), site_download: $('c-sitedl').checked } }); }, '권한 설정을 저장했습니다.');
     });
     $('c-save').addEventListener('click', function () {
-      var set = { form_file_id: $('c-form').value.trim(), feedback_results: $('c-results').value.trim(), feedback_headers: $('c-headers').value.trim() };
+      var set = { form_file_id: $('c-form').value.trim(), feedback_results: $('c-results').value.trim(), feedback_headers: $('c-headers').value.trim(),
+                  regions: $('c-regions').value.trim(), apply_qty_default: $('c-qty').value.trim(), apply_qty_rules: $('c-qtyrules').value.trim() };
       var pw = $('c-pw').value.trim(); if (pw) set.admin_password = pw;
       run(async function () { await call('admin.config', { set: set }); S.boot = await call('me.bootstrap'); }, '설정을 저장했습니다.');
     });
@@ -674,6 +681,13 @@
   $('adm-input').addEventListener('change', async function (e) {
     var f = e.target.files && e.target.files[0], kind = e.target.dataset.kind;
     if (!f) return;
+    if (kind === 'form') {   // 신청서 양식: 표가 아니라 파일 자체를 Drive 「양식」 폴더에 저장
+      run(async function () {
+        await call('admin.uploadForm', { file: { name: f.name, type: f.type || 'application/octet-stream', base64: await DB.fileToBase64(f) } });
+        S.boot = await call('me.bootstrap');
+      }, '신청서 양식을 등록했습니다. 사용인 화면의 「신청서 양식 열기」에 연결됩니다.');
+      return;
+    }
     var box = $('adm-checks');
     function fail(msg) { box.innerHTML = '<div class="checks"><div class="check fail"><span class="ic">✕</span><div><b>업로드 거부</b><small>' + esc(msg) + '</small></div></div></div>'; toast('업로드가 거부되었습니다.', 'stop'); }
     try {
