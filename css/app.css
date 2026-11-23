@@ -246,6 +246,11 @@
   .boundary .site { background: var(--ok-bg); border: 1px solid var(--ok-line); }
   .switch { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; font-size: 12.5px; }
   .switch input { width: auto; }
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
+  .modal-bg[hidden] { display: none; }
+  .modal { width: 100%; max-width: 520px; background: var(--card); border-radius: 14px; padding: 18px 18px 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px; max-height: 90vh; overflow: auto; }
+  .modal .switch { align-items: flex-start; line-height: 1.5; }
+  .modal .switch input { margin-top: 3px; flex: none; }
 
   /* 로그인 */
   .login { padding: 22px 20px 24px; display: flex; flex-direction: column; gap: 16px; }

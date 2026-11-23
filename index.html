@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/app.css?v=202611231639">
+<link rel="stylesheet" href="css/app.css?v=202611231642">
 <script>
 window.__diagLog = [];
 window.diag = function (m) {
@@ -161,14 +161,26 @@ setTimeout(function () { var l = document.getElementById('l-loading'); if (l && 
 
 <div class="toasts" id="toasts"></div>
 
+<!-- 신청 유의사항 확인 (신규 신청 제출 직전) -->
+<div class="modal-bg" id="notice-modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="nm-title">
+    <h2 class="sec-title" id="nm-title">유의사항을 확인해 주세요</h2>
+    <p class="sec-desc">아래 항목을 읽고 각각 체크해야 제출할 수 있습니다.</p>
+    <label class="switch"><input type="checkbox" data-notice> 요청지역은 최대 3개까지 가능하며, 지역별 배정수량이 부족할 경우 요청하셨더라도 배정되지 않을 수 있습니다.</label>
+    <label class="switch"><input type="checkbox" data-notice> 신청자가 위촉 1개월 이내인 경우 접수가 반려 처리됩니다.</label>
+    <label class="switch"><input type="checkbox" data-notice> 수금이관 진행 후 본사로 재이관 요청은 불가합니다.</label>
+    <div class="btn-row"><button class="btn btn-submit" type="button" id="nm-ok" disabled>유의사항을 모두 확인했습니다. 신청서 제출하기</button><button class="btn-ghost" type="button" id="nm-cancel" style="flex:0 0 auto">취소</button></div>
+  </div>
+</div>
+
 <input type="file" id="cam-input" accept="image/jpeg,image/png,image/webp" capture="environment" hidden>
 <input type="file" id="file-input" accept="application/pdf,image/jpeg,image/png,image/webp" hidden>
 <input type="file" id="fb-input" accept=".xlsx" hidden>
 <input type="file" id="adm-input" accept=".xlsx,.xls,.csv,.pdf,.doc,.docx,.hwp,.hwpx,.png,.jpg,.jpeg" hidden>
 
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" onerror="diagShow('엑셀 라이브러리(cdnjs) 로드 실패')"></script>
-<script src="js/api.js?v=202611231639" onerror="diagShow('api.js 로드 실패')"></script>
-<script src="js/app.js?v=202611231639" onerror="diagShow('app.js 로드 실패')"></script>
+<script src="js/api.js?v=202611231642" onerror="diagShow('api.js 로드 실패')"></script>
+<script src="js/app.js?v=202611231642" onerror="diagShow('app.js 로드 실패')"></script>
 <script>diag("스크립트 로드 완료 (api.js " + (window.DB && DB.api ? "OK" : "없음") + ")");</script>
 </body>
 </html>

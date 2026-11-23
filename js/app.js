@@ -115,6 +115,23 @@
   });
   $('l-apw').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('l-ago').click(); });
 
+  /* ───────── 신청 유의사항 확인 모달 (신규 신청 제출 직전) ───────── */
+  function confirmNotices() {
+    return new Promise(function (resolve) {
+      var m = $('notice-modal'), ok = $('nm-ok'), boxes = Array.prototype.slice.call(m.querySelectorAll('[data-notice]'));
+      boxes.forEach(function (b) { b.checked = false; });
+      ok.disabled = true;
+      function refresh() { ok.disabled = !boxes.every(function (b) { return b.checked; }); }
+      function close(v) { m.hidden = true; boxes.forEach(function (b) { b.removeEventListener('change', refresh); }); ok.onclick = null; $('nm-cancel').onclick = null; m.onclick = null; resolve(v); }
+      boxes.forEach(function (b) { b.addEventListener('change', refresh); });
+      ok.onclick = function () { close(true); };
+      $('nm-cancel').onclick = function () { close(false); };
+      m.onclick = function (e) { if (e.target === m) close(false); };
+      m.hidden = false;
+      boxes[0].focus();
+    });
+  }
+
   /* ───────── 로그인 전 신청서 제출 ───────── */
   function publicReady() {
     var ok = ['p-no', 'p-name', 'p-hq', 'p-phone', 'p-r1'].every(function (id) { return $(id).value.trim() !== ''; }) && !!P.file;
@@ -152,6 +169,7 @@
     var dup = regions.filter(function (r, i) { return regions.indexOf(r) !== i; });
     if (dup.length) { err.textContent = '같은 지역을 두 번 선택했습니다: ' + dup[0]; err.hidden = false; return; }
     if (!P.file) { err.textContent = '작성한 신청서를 촬영하거나 첨부해 주세요.'; err.hidden = false; return; }
+    if (!(await confirmNotices())) return;
     var btn = $('p-submit'); btn.disabled = true; btn.textContent = '업로드 중…';
     try {
       var r = await DB.api('apply.public', { no: no, name: name, hq: hq, br: br, phone: phone, regions: regions,
@@ -352,6 +370,7 @@
       var dup = regions.filter(function (r, i) { return regions.indexOf(r) !== i; });
       if (dup.length) { toast('같은 지역을 두 번 선택했습니다: ' + dup[0], 'stop'); return; }
       payload.regions = regions;
+      if (!(await confirmNotices())) return;
     }
     var btn = $('a-submit'); btn.disabled = true; btn.textContent = '업로드 중…';
     try {
