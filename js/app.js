@@ -66,7 +66,10 @@
       var info = await DB.api('public.info');
       P.info = info;
       $('p-r1').innerHTML = publicRegionOptions(false); $('p-r2').innerHTML = publicRegionOptions(true); $('p-r3').innerHTML = publicRegionOptions(true);
-      $('p-formlink').innerHTML = info.form_url ? '<a class="btn-ghost" href="' + esc(info.form_url) + '" target="_blank" rel="noopener" style="text-align:center;text-decoration:none">신청서 양식 열기</a>'
+      var fid = (String(info.form_url || '').match(/\/d\/([^\/]+)/) || [])[1] || '';
+      $('p-formlink').innerHTML = fid
+        ? '<a class="btn-ghost" href="' + esc(info.form_url) + '" target="_blank" rel="noopener" style="text-align:center;text-decoration:none">양식 열기</a>' +
+          '<a class="btn-ghost" href="https://drive.google.com/uc?export=download&id=' + esc(fid) + '" target="_blank" rel="noopener" style="text-align:center;text-decoration:none">PDF 다운로드하기</a>'
         : '<span class="helper">양식 파일이 아직 등록되지 않았습니다. RP영업지원팀 안다솜 과장에게 받은 양식을 사용해 주세요.</span>';
       $('l-loading').hidden = true; $('l-form').hidden = false; if (window.diagHide) diagHide();
       // 관리자 입구: 주소 뒤에 ?admin 또는 #admin 을 붙여 열었을 때만 관리자 로그인 표시 (일반 사용자 화면에는 노출 안 함)
@@ -112,8 +115,15 @@
   $('l-apw').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('l-ago').click(); });
 
   /* ───────── 로그인 전 신청서 제출 ───────── */
+  function publicReady() {
+    var ok = ['p-no', 'p-name', 'p-hq', 'p-phone', 'p-r1'].every(function (id) { return $(id).value.trim() !== ''; }) && !!P.file;
+    $('p-submit').disabled = !ok;
+    var hint = $('p-ready-hint'); if (hint) hint.textContent = ok ? '제출할 준비가 되었습니다.' : '필수 항목과 신청서 파일을 모두 채우면 버튼이 초록색으로 바뀝니다.';
+    return ok;
+  }
+  ['p-no', 'p-name', 'p-hq', 'p-phone', 'p-r1'].forEach(function (id) { $(id).addEventListener('input', publicReady); $(id).addEventListener('change', publicReady); });
   $('p-open').addEventListener('click', function () { $('p-form').hidden = false; $('p-done').hidden = true; $('p-form').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
-  $('p-close').addEventListener('click', function () { $('p-form').hidden = true; P.file = null; $('p-filechip').innerHTML = ''; $('p-submit').disabled = true; });
+  $('p-close').addEventListener('click', function () { $('p-form').hidden = true; P.file = null; $('p-filechip').innerHTML = ''; publicReady(); });
   $('p-cam').addEventListener('click', function () { $('cam-input').dataset.target = 'public'; $('cam-input').value = ''; $('cam-input').click(); });
   $('p-file').addEventListener('click', function () { $('file-input').dataset.target = 'public'; $('file-input').value = ''; $('file-input').click(); });
   function onPublicFile(e) {
@@ -129,8 +139,8 @@
       '<div><div class="fn">' + esc(f.name) + '</div><div class="fs">' + fmtBytes(f.size) + ' · ' + esc(f.type) + '</div></div>' +
       '<button class="btn-ghost btn-sm danger" type="button" id="p-rm">제거</button></div>';
     if (isImg) { var r = new FileReader(); r.onload = function () { var t = $('p-thumb'); if (t) t.src = r.result; }; r.readAsDataURL(f); }
-    $('p-rm').addEventListener('click', function () { P.file = null; chip.innerHTML = ''; $('p-submit').disabled = true; });
-    $('p-submit').disabled = false;
+    $('p-rm').addEventListener('click', function () { P.file = null; chip.innerHTML = ''; publicReady(); });
+    publicReady();
   }
   $('p-submit').addEventListener('click', async function () {
     var err = $('p-err'); err.hidden = true;
@@ -153,7 +163,7 @@
       toast('접수되었습니다. 접수번호 ' + r.id, 'ok');
       ['p-no', 'p-name', 'p-hq', 'p-br', 'p-phone'].forEach(function (id) { $(id).value = ''; });
     } catch (e) { err.textContent = e.message; err.hidden = false; }
-    finally { btn.textContent = '신청서 제출'; btn.disabled = !P.file; }
+    finally { btn.textContent = '신청서 제출'; publicReady(); }
   });
 
   function enterMain(boot) {

@@ -102,6 +102,10 @@
   .btn { padding: 11px 16px; border: 0; border-radius: 11px; background: var(--primary); color: #fff; font-weight: 700; transition: background .15s; }
   .btn:hover { background: var(--primary-dark); }
   .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-submit { background: #d9d9d9; color: #8a8a8a; opacity: 1; }
+  .btn-submit:disabled { background: #d9d9d9; color: #8a8a8a; opacity: 1; cursor: not-allowed; }
+  .btn-submit:not(:disabled) { background: #3fae5a; color: #fff; }
+  .btn-submit:not(:disabled):hover { background: #35984d; }
   .btn.secondary { background: var(--secondary); }
   .btn.secondary:hover { background: var(--secondary-dark); }
   .btn-ghost.secondary { border-color: var(--secondary); color: var(--secondary); }
