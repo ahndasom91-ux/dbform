@@ -105,7 +105,7 @@ setTimeout(function () { var l = document.getElementById('l-loading'); if (l && 
             <div class="err" id="l-err" hidden></div>
             <button class="btn" type="button" id="l-go">본인 확인하고 들어가기</button>
             <span class="helper">휴대폰번호는 서버에 원문으로 저장되지 않고 해시값으로만 대조합니다. 5회 연속 실패 시 30분간 잠깁니다.</span>
-            <div style="text-align:center"><button class="inline-link" type="button" id="l-admin-toggle">관리자 비밀번호로 로그인</button></div>
+            <div style="text-align:center" id="l-admin-toggle-wrap" hidden><button class="inline-link" type="button" id="l-admin-toggle">관리자 비밀번호로 로그인</button></div>
             <div class="fields" id="l-admin" hidden>
               <div class="row2">
                 <div class="field"><label for="l-aname">담당자 이름</label><input id="l-aname" placeholder="담당자"></div>

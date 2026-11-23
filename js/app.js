@@ -69,6 +69,14 @@
       $('p-formlink').innerHTML = info.form_url ? '<a class="btn-ghost" href="' + esc(info.form_url) + '" target="_blank" rel="noopener" style="text-align:center;text-decoration:none">신청서 양식 열기</a>'
         : '<span class="helper">양식 파일이 아직 등록되지 않았습니다. RP영업지원팀 안다솜 과장에게 받은 양식을 사용해 주세요.</span>';
       $('l-loading').hidden = true; $('l-form').hidden = false; if (window.diagHide) diagHide();
+      // 관리자 입구: 주소 뒤에 ?admin 또는 #admin 을 붙여 열었을 때만 관리자 로그인 표시 (일반 사용자 화면에는 노출 안 함)
+      if (/[?&]admin/.test(location.search) || location.hash === '#admin') {
+        $('l-admin').hidden = false; $('l-admin-toggle-wrap').hidden = true;
+        var guide = $('p-open').closest('.sec'); if (guide) guide.hidden = true;
+        $('p-form').hidden = true;
+        var sub = document.querySelector('#login-view .subtitle'); if (sub) sub.textContent = '관리자 입구 · RP영업지원팀';
+        setTimeout(function () { $('l-apw').focus(); }, 50);
+      }
       if (DB.token()) { try { var b = await DB.api('me.bootstrap'); enterMain(b); } catch (e) { DB.setToken(''); } }
     } catch (e) {
       $('l-loading').hidden = true;
