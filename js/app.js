@@ -603,6 +603,28 @@
     $('s-month').addEventListener('change', function () { S.statMonth = $('s-month').value; renderStats(); });
   }
 
+  /* ───────── 파일 마우스오버 미리보기 (관리자) ───────── */
+  var THUMB = { cache: {}, el: null, cur: '' };
+  function thumbBox() {
+    if (!THUMB.el) { THUMB.el = document.createElement('div'); THUMB.el.className = 'thumb-pop'; THUMB.el.hidden = true; document.body.appendChild(THUMB.el); }
+    return THUMB.el;
+  }
+  function thumbMove(e) { var b = thumbBox(), x = e.clientX + 16, y = e.clientY + 16; if (x + 340 > window.innerWidth) x = e.clientX - 356; if (y + 460 > window.innerHeight) y = Math.max(8, window.innerHeight - 468); b.style.left = x + 'px'; b.style.top = y + 'px'; }
+  document.addEventListener('mouseover', async function (e) {
+    var a = e.target.closest && e.target.closest('.thumb-hover'); if (!a || !a.dataset.thumb) return;
+    var id = a.dataset.thumb, b = thumbBox(); THUMB.cur = id; b.hidden = false; thumbMove(e);
+    if (!THUMB.cache[id]) {
+      b.innerHTML = '<div class="thumb-msg">미리보기 불러오는 중…</div>';
+      try { var r = await call('admin.thumb', { id: id }); THUMB.cache[id] = { src: 'data:' + r.mime + ';base64,' + r.base64, name: r.name }; }
+      catch (err) { THUMB.cache[id] = { err: err.message }; }
+    }
+    if (THUMB.cur !== id) return;
+    var t = THUMB.cache[id];
+    b.innerHTML = t.err ? '<div class="thumb-msg">' + esc(t.err) + '</div>' : '<img src="' + t.src + '" alt=""><div class="thumb-name">' + esc(t.name) + ' · 클릭하면 원본</div>';
+  });
+  document.addEventListener('mousemove', function (e) { if (THUMB.el && !THUMB.el.hidden) thumbMove(e); });
+  document.addEventListener('mouseout', function (e) { var a = e.target.closest && e.target.closest('.thumb-hover'); if (a && THUMB.el) { THUMB.el.hidden = true; THUMB.cur = ''; } });
+
   /* ───────── 6. 관리 (관리자) ───────── */
   var A = {};
   async function renderAdmin() {
@@ -627,7 +649,7 @@
     if (!A.apps.length) h += '<tr><td colspan="7" class="dash">이번 달 신청이 없습니다.</td></tr>';
     A.apps.forEach(function (a, i) {
       h += '<tr><td><input type="checkbox" data-sel="' + i + '"></td><td class="mono">' + esc(a.id.slice(3)) + (a.resend ? '<span class="cell-sub" style="color:var(--warn)">재발송 요청</span>' : '') + '</td><td class="name">' + esc(a.name) + (a.type === '제외' ? ' ' + pillOf('제외 신청') : '') + '<span class="cell-sub">' + esc([a.hq, a.br].filter(Boolean).join(' · ')) + (a.by ? ' · 대리 ' + esc(a.by) : '') + '</span></td><td>' + (a.type === '제외' ? '<span class="dash">—</span>' : esc(a.regions) + ' · ' + a.qty) + '</td>' +
-        '<td><a class="link" href="' + esc(a.file_url) + '" target="_blank" rel="noopener">열기</a></td>' +
+        '<td><a class="link thumb-hover" data-thumb="' + esc((String(a.file_url || '').match(/\/d\/([^\/]+)/) || [])[1] || '') + '" href="' + esc(a.file_url) + '" target="_blank" rel="noopener">열기</a></td>' +
         '<td><select data-app="' + i + '">' + STATUS_FLOW.concat(['반려']).map(function (s) { return '<option' + (s === a.status ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></td>' +
         '<td><input data-reason="' + i + '" value="' + esc(a.reason) + '" placeholder="사유 · 메모" style="min-width:160px"></td></tr>';
     });
@@ -655,7 +677,7 @@
     if (!A.fbs.length) h += '<tr><td colspan="7" class="dash">제출된 피드백이 없습니다.</td></tr>';
     A.fbs.forEach(function (f, i) {
       h += '<tr><td class="name">' + esc(f.name) + '<span class="cell-sub">' + esc([f.hq, f.br].filter(Boolean).join(' · ')) + '</span></td><td class="num mono">' + f.count + '</td><td class="num mono">' + f.filled + '</td><td class="mono">' + esc(f.at.slice(5, 16).replace('T', ' ')) + '<span class="cell-sub">v' + f.ver + '</span></td>' +
-        '<td><a class="link" href="' + esc(f.file_url) + '" target="_blank" rel="noopener">열기</a></td><td>' + pillOf(f.review) + (f.note ? '<span class="cell-sub">' + esc(f.note) + '</span>' : '') + '</td>' +
+        '<td><a class="link thumb-hover" data-thumb="' + esc((String(f.file_url || '').match(/\/d\/([^\/]+)/) || [])[1] || '') + '" href="' + esc(f.file_url) + '" target="_blank" rel="noopener">열기</a></td><td>' + pillOf(f.review) + (f.note ? '<span class="cell-sub">' + esc(f.note) + '</span>' : '') + '</td>' +
         '<td>' + (f.review === '제출완료' ? '<span class="helper">확인 ' + esc(f.confirmed_at.slice(5, 16).replace('T', ' ')) + ' ' + esc(f.confirmed_by) + '</span>' :
           '<div class="btn-row" style="flex-wrap:nowrap"><button class="btn btn-sm" type="button" data-fbok="' + i + '"' + (f.review === '부분제출' ? ' disabled title="부분 제출은 확인 대상이 아닙니다"' : '') + '>확인완료</button><input data-fbnote="' + i + '" placeholder="보완 사유" style="min-width:120px"><button class="btn-ghost btn-sm danger" type="button" data-fbfix="' + i + '">보완요청</button></div>') + '</td></tr>';
     });
