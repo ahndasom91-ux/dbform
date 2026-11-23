@@ -44,7 +44,17 @@
   }
 
   /* ───────── 로그인 ───────── */
+  /* 카카오톡 인앱 브라우저: 촬영·다운로드가 막히는 경우가 있어 외부 브라우저로 열도록 안내 (세션당 한 번) */
+  function warnKakaoInApp() {
+    if (!/KAKAOTALK/i.test(navigator.userAgent || '')) return;
+    try { if (sessionStorage.getItem('kakaoWarned')) return; sessionStorage.setItem('kakaoWarned', '1'); } catch (e) {}
+    if (window.confirm('카카오톡 브라우저에서는 촬영·파일 받기 등 일부 기능이 정상 작동하지 않을 수 있습니다.\n\nChrome·Safari 같은 외부 브라우저로 열어 주세요.\n\n[확인]을 누르면 외부 브라우저로 엽니다.')) {
+      location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(location.href);
+    }
+  }
+
   async function init() {
+    warnKakaoInApp();
     try {
       var info = await DB.api('public.info');
       var sel = $('l-hq');
@@ -158,7 +168,7 @@
       '<button class="upload-btn" type="button" id="a-file">📎 사진·파일 선택<small>PDF 또는 이미지</small></button></div><div id="a-filechip"></div></div>' +
       (type === '제외'
         ? '<div class="stepcard"><div class="sc-head"><div class="sc-no">3</div><div><div class="sc-title">제외 사유</div></div></div><div class="field"><textarea id="a-memo" placeholder="예: 다음 달부터 휴직 / 활동 중단"></textarea></div></div>'
-        : '<div class="stepcard"><div class="sc-head"><div class="sc-no">3</div><div><div class="sc-title">희망지역 (1~3순위)</div><div class="sc-desc">1순위부터 채워지고 부족하면 2·3순위로 넘어갑니다. 배정수량은 직책에 따라 자동 산정됩니다' + (forManager ? '' : ' (내 기준 ' + (S.boot.config.apply_qty || '') + '건)') + '.</div></div></div>' +
+        : '<div class="stepcard"><div class="sc-head"><div class="sc-no">3</div><div><div class="sc-title">희망지역 (1~3순위)</div><div class="sc-desc">1순위부터 채워지고 부족하면 2·3순위로 넘어갑니다.</div></div></div>' +
           '<div class="fields"><div class="row3">' +
           '<div class="field"><label for="a-r1">1순위 <span class="req">*</span></label><select id="a-r1">' + regionOptions(false) + '</select></div>' +
           '<div class="field"><label for="a-r2">2순위</label><select id="a-r2">' + regionOptions(true) + '</select></div>' +
