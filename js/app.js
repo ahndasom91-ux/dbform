@@ -340,7 +340,7 @@
       h2 += '<div class="result"><div class="result-top"><div class="result-who">' + monthKo(month) + ' 배정분</div>' + pillOf(al ? al.status : '미신청') + '</div>' + (al && al.reason ? '<div class="reason">' + esc(al.reason) + '</div>' : '<p class="sec-desc">배정이 확정되면 이 자리에 발송 정보가 표시됩니다.</p>') + '</div>';
     }
     h2 += cautionHtml('배정파일 유의사항', S.boot.notices.file);
-    if (!data.site_download) h2 += '<div class="result locked"><div class="result-top"><div class="result-who">사이트에서 바로 내려받기 <span>· 2차 오픈 예정</span></div>' + pillOf('준비 중') + '</div><p class="sec-desc" style="margin:0">현재는 메일로 받습니다. 못 받으셨으면 위의 재발송 요청을 눌러 주세요.</p></div>';
+    // 사이트 다운로드(본인 확인된 엑셀 직접 내려받기)는 추후 개발. 개발 전에는 사용자에게 어떤 안내도 노출하지 않는다 (config.site_download=Y 가 되어도 기능 구현 후 연결).
     h2 += '</div><hr class="rule"><div class="sec"><h2 class="sec-title">피드백 제출</h2><p class="sec-desc">메일로 받은 배정 엑셀에 <b>컨택일자 · 컨택결과 · 상세내용</b>을 기재한 뒤 <b>그 파일 그대로</b> 올립니다. 사진은 받지 않습니다.</p>';
     if (last) {
       var total = al ? al.count : last.rows, pct = total ? Math.round(last.filled / total * 100) : 0;
@@ -574,7 +574,7 @@
     var roles = String(A.cfg.enabled_roles || '').split(',');
     h += '<div class="sec"><h2 class="sec-title">설정</h2><div class="cfg-grid">' +
       '<div class="fields"><b style="font-size:12.5px">로그인 허용 역할 (config.enabled_roles)</b>' + ['본부장', '사업단장', '지점장', '사용인'].map(function (r) { return '<label class="switch"><input type="checkbox" data-role="' + r + '"' + (roles.indexOf(r) >= 0 ? ' checked' : '') + '> ' + r + ' 로그인 허용</label>'; }).join('') +
-      '<label class="switch"><input type="checkbox" id="c-sitedl"' + (A.cfg.site_download === 'Y' ? ' checked' : '') + '> 배정목록 사이트 다운로드 (2차 · 현재 미구현, 안내 문구만 바뀜)</label><button class="btn-ghost btn-sm" type="button" id="c-roles-save">권한 저장</button></div>' +
+      '<label class="switch"><input type="checkbox" id="c-sitedl"' + (A.cfg.site_download === 'Y' ? ' checked' : '') + '> 배정목록 사이트 다운로드 (미구현 · 사용자 화면에는 아직 아무것도 표시되지 않음)</label><button class="btn-ghost btn-sm" type="button" id="c-roles-save">권한 저장</button></div>' +
       '<div class="fields"><div class="field"><label for="c-form">신청서 양식 파일</label><div class="btn-row" style="margin:0"><button class="btn-ghost btn-sm" type="button" data-up="form">📎 양식 파일 업로드 (PDF·DOCX·XLSX)</button>' + (A.cfg.form_file_id ? '<a class="btn-ghost btn-sm" href="https://drive.google.com/file/d/' + esc(A.cfg.form_file_id) + '/view" target="_blank" rel="noopener" style="text-decoration:none">현재 양식 열기</a>' : '<span class="helper" style="color:var(--warn)">아직 등록된 양식이 없습니다</span>') + '</div>' +
       '<span class="helper">업로드하면 Drive 「양식」 폴더(<a class="link" href="' + esc(A.cfg.forms_folder_url) + '" target="_blank" rel="noopener">열기</a>)에 저장되고 링크 보기 권한으로 공유돼 사용인 화면의 「신청서 양식 열기」에 바로 연결됩니다. 직접 올린 파일은 아래 ID 칸에 붙여 넣어도 됩니다.</span>' +
       '<input id="c-form" class="mono" value="' + esc(A.cfg.form_file_id || '') + '" placeholder="Drive 파일 ID (링크의 /d/ 와 /view 사이)"></div>' +
