@@ -58,7 +58,8 @@
   var P = { info: null, file: null };   // 로그인 전 화면 상태
   function publicRegionOptions(blank) {
     var list = (P.info && P.info.regions && P.info.regions.length) ? P.info.regions : REGIONS;
-    return (blank ? '<option value="">없음</option>' : '') + list.map(function (r) { return '<option>' + esc(r) + '</option>'; }).join('');
+    // 1순위도 고정값 없이 '선택하세요' 로 시작 (blank=false 면 선택 필수)
+    return '<option value="">' + (blank ? '없음' : '선택하세요') + '</option>' + list.map(function (r) { return '<option>' + esc(r) + '</option>'; }).join('');
   }
   async function init() {
     warnKakaoInApp();
@@ -220,7 +221,7 @@
   }
   function regionOptions(blank) {
     var list = (S.boot && S.boot.config && S.boot.config.regions && S.boot.config.regions.length) ? S.boot.config.regions : REGIONS;
-    return (blank ? '<option value="">없음</option>' : '') + list.map(function (r) { return '<option>' + esc(r) + '</option>'; }).join('');
+    return '<option value="">' + (blank ? '없음' : '선택하세요') + '</option>' + list.map(function (r) { return '<option>' + esc(r) + '</option>'; }).join('');
   }
   function applyFormHtml(type, people) {
     var forManager = isManager();
