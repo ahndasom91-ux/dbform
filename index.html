@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/app.css?v=202611231642">
+<link rel="stylesheet" href="css/app.css?v=202611231650">
 <script>
 window.__diagLog = [];
 window.diag = function (m) {
@@ -74,7 +74,7 @@ setTimeout(function () { var l = document.getElementById('l-loading'); if (l && 
               <div class="field"><label for="p-phone">휴대폰번호 <span class="req">*</span></label><input id="p-phone" class="mono" inputmode="numeric" placeholder="010-0000-0000" autocomplete="off">
                 <span class="helper">GP에 등록된 본인 휴대폰번호를 입력해 주세요. 하이픈(-)은 선택사항입니다.</span></div>
             </div></div>
-          <div class="stepcard"><div class="sc-head"><div class="sc-no">3</div><div><div class="sc-title">희망지역 (1~3순위)</div><div class="sc-desc">1순위부터 채워지고 부족하면 다음 순위로 넘어갑니다. 배정수량은 직책에 따라 자동 산정됩니다.</div></div></div>
+          <div class="stepcard"><div class="sc-head"><div class="sc-no">3</div><div><div class="sc-title">희망지역 (1~3순위)</div><div class="sc-desc">1순위부터 채워지고 부족하면 다음 순위로 넘어갑니다.</div></div></div>
             <div class="fields"><div class="row3">
               <div class="field"><label for="p-r1">1순위 <span class="req">*</span></label><select id="p-r1"></select></div>
               <div class="field"><label for="p-r2">2순위</label><select id="p-r2"></select></div>
@@ -179,8 +179,8 @@ setTimeout(function () { var l = document.getElementById('l-loading'); if (l && 
 <input type="file" id="adm-input" accept=".xlsx,.xls,.csv,.pdf,.doc,.docx,.hwp,.hwpx,.png,.jpg,.jpeg" hidden>
 
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" onerror="diagShow('엑셀 라이브러리(cdnjs) 로드 실패')"></script>
-<script src="js/api.js?v=202611231642" onerror="diagShow('api.js 로드 실패')"></script>
-<script src="js/app.js?v=202611231642" onerror="diagShow('app.js 로드 실패')"></script>
+<script src="js/api.js?v=202611231650" onerror="diagShow('api.js 로드 실패')"></script>
+<script src="js/app.js?v=202611231650" onerror="diagShow('app.js 로드 실패')"></script>
 <script>diag("스크립트 로드 완료 (api.js " + (window.DB && DB.api ? "OK" : "없음") + ")");</script>
 </body>
 </html>
