@@ -44,6 +44,8 @@
   }
 
   /* ───────── 로그인 ───────── */
+  var IS_ANDROID = /Android/i.test(navigator.userAgent || '');
+
   /* 카카오톡 인앱 브라우저: 촬영·다운로드가 막히는 경우가 있어 외부 브라우저로 열도록 안내 (세션당 한 번) */
   function warnKakaoInApp() {
     if (!/KAKAOTALK/i.test(navigator.userAgent || '')) return;
@@ -165,7 +167,7 @@
         (formDl ? '<a class="btn-ghost" href="' + esc(formDl) + '" rel="noopener" style="flex:1;text-align:center;text-decoration:none">⬇ PDF 다운로드</a>' : '') :'<span class="helper">양식 파일이 아직 등록되지 않았습니다. RP영업지원팀 안다솜 과장에게 받은 양식을 사용해 주세요.</span>') + '</div></div>' +
       '<div class="stepcard"><div class="sc-head"><div class="sc-no">2</div><div><div class="sc-title">작성한 신청서 촬영 또는 첨부' + (forManager ? ' <span class="helper">(대리 신청도 필수)</span>' : '') + '</div><div class="sc-desc">글자가 선명하고 신청서 전체가 보이도록 촬영해 주세요. PDF·JPG·PNG, ' + S.boot.config.max_upload_mb + 'MB 이하.</div></div></div>' +
       '<div class="upload-box"><button class="upload-btn" type="button" id="a-cam">📷 휴대폰으로 촬영<small>후면 카메라가 바로 열립니다</small></button>' +
-      '<button class="upload-btn" type="button" id="a-file">📎 사진·파일 선택<small>PDF 또는 이미지</small></button></div><div id="a-filechip"></div></div>' +
+      '<button class="upload-btn" type="button" id="a-file">📎 사진·파일 선택<small>' + (IS_ANDROID ? '사진(이미지)' : 'PDF 또는 이미지') + '</small></button></div><div id="a-filechip"></div></div>' +
       (type === '제외'
         ? '<div class="stepcard"><div class="sc-head"><div class="sc-no">3</div><div><div class="sc-title">제외 사유</div></div></div><div class="field"><textarea id="a-memo" placeholder="예: 다음 달부터 휴직 / 활동 중단"></textarea></div></div>'
         : '<div class="stepcard"><div class="sc-head"><div class="sc-no">3</div><div><div class="sc-title">희망지역 (1~3순위)</div><div class="sc-desc">1순위부터 채워지고 부족하면 2·3순위로 넘어갑니다.</div></div></div>' +
@@ -174,8 +176,7 @@
           '<div class="field"><label for="a-r2">2순위</label><select id="a-r2">' + regionOptions(true) + '</select></div>' +
           '<div class="field"><label for="a-r3">3순위</label><select id="a-r3">' + regionOptions(true) + '</select></div></div></div></div>') +
       '<input type="hidden" id="a-type" value="' + type + '">' +
-      '<div class="btn-row"><button class="btn" type="button" id="a-submit" disabled>' + (type === '제외' ? '제외 신청 제출' : '신청서 제출') + '</button><button class="btn-ghost" type="button" id="a-close" style="flex:0 0 auto">닫기</button></div>' +
-      '<span class="helper">제출하면 파일은 Drive 「신청서/' + esc(month) + '」 폴더에 저장되고 접수번호가 발급됩니다. 이미지는 서버에서 PDF로 변환됩니다.</span></div>';
+      '<div class="btn-row"><button class="btn" type="button" id="a-submit" disabled>' + (type === '제외' ? '제외 신청 제출' : '신청서 제출') + '</button><button class="btn-ghost" type="button" id="a-close" style="flex:0 0 auto">닫기</button></div></div>';
   }
 
   async function renderApply() {
@@ -241,6 +242,8 @@
     if (fl) fl.addEventListener('click', function () { $('file-input').value = ''; $('file-input').click(); });
     var sb = $('a-submit'); if (sb) sb.addEventListener('click', submitApplication);
   }
+  // 안드로이드는 허용 형식이 여러 개면 선택창에 캠코더까지 뜬다 → 이미지 한 종류로 좁혀 카메라·폴더만 나오게
+  if (IS_ANDROID) $('file-input').setAttribute('accept', 'image/*');
   function onApplyFile(e) {
     var f = e.target.files && e.target.files[0];
     if (!f) return;
