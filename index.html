@@ -52,7 +52,7 @@ setTimeout(function () { var l = document.getElementById('l-loading'); if (l && 
           <div class="stepcard"><div class="sc-head"><div class="sc-no">1</div><div><div class="sc-title">신청서 제출 <span class="helper">(로그인 없이)</span></div><div class="sc-desc">신청서 양식을 받아 작성한 뒤 촬영하거나 파일로 올립니다. GP 사용인번호 · 이름 · 휴대폰번호 · 희망지역(1~3순위)을 함께 입력합니다.</div></div></div></div>
           <div class="stepcard"><div class="sc-head"><div class="sc-no">2</div><div><div class="sc-title">확인 · 배정</div><div class="sc-desc">RP영업지원팀이 신청서를 확인하고 배정을 확정합니다. 진행 상태는 접수번호로 안내됩니다.</div></div></div></div>
           <div class="stepcard"><div class="sc-head"><div class="sc-no">3</div><div><div class="sc-title">로그인 후 배정 확인 · 피드백 제출</div><div class="sc-desc">배정이 확정되면 사용인번호 · 이름 · 휴대폰번호로 로그인해 배정 결과를 확인하고 컨택 피드백을 제출합니다.</div></div></div></div>
-          <div class="btn-row"><button class="btn" type="button" id="p-open">📝 신청서 제출하기 <small style="font-weight:normal;opacity:.85">· 처음 신청 · 로그인 불필요</small></button></div>
+          <div class="btn-row"><button class="btn secondary" type="button" id="p-open">📝 신청서 제출하기 <small style="font-weight:normal;opacity:.85">· 처음 신청 · 로그인 불필요</small></button></div>
         </div>
 
         <!-- 로그인 전 신청서 제출 -->
@@ -68,8 +68,8 @@ setTimeout(function () { var l = document.getElementById('l-loading'); if (l && 
                 <div class="field"><label for="p-name">이름 <span class="req">*</span></label><input id="p-name" placeholder="홍길동" autocomplete="off"></div>
               </div>
               <div class="row2">
-                <div class="field"><label for="p-hq">본부 <span class="req">*</span></label><input id="p-hq" placeholder="예: 랩스본부" autocomplete="off"></div>
-                <div class="field"><label for="p-br">지점</label><input id="p-br" placeholder="예: 랩스본부직할지점" autocomplete="off"></div>
+                <div class="field"><label for="p-hq">본부 <span class="req">*</span></label><input id="p-hq" placeholder="예: 리치본부" autocomplete="off"></div>
+                <div class="field"><label for="p-br">지점</label><input id="p-br" placeholder="예: 리치직할지점" autocomplete="off"></div>
               </div>
               <div class="field"><label for="p-phone">휴대폰번호 <span class="req">*</span></label><input id="p-phone" class="mono" inputmode="numeric" placeholder="010-0000-0000" autocomplete="off">
                 <span class="helper">GP 에 등록된 본인 번호. 로그인할 때 같은 번호를 씁니다. 서버에는 해시값으로만 저장됩니다.</span></div>
@@ -84,14 +84,14 @@ setTimeout(function () { var l = document.getElementById('l-loading'); if (l && 
             <div class="upload-box"><button class="upload-btn" type="button" id="p-cam">📷 휴대폰으로 촬영<small>후면 카메라가 바로 열립니다</small></button>
             <button class="upload-btn" type="button" id="p-file">📎 사진·파일 선택<small>PDF 또는 이미지</small></button></div><div id="p-filechip"></div></div>
           <div class="err" id="p-err" hidden></div>
-          <div class="btn-row"><button class="btn" type="button" id="p-submit" disabled>신청서 제출</button><button class="btn-ghost" type="button" id="p-close" style="flex:0 0 auto">닫기</button></div>
+          <div class="btn-row"><button class="btn secondary" type="button" id="p-submit" disabled>신청서 제출</button><button class="btn-ghost" type="button" id="p-close" style="flex:0 0 auto">닫기</button></div>
           <div class="result" id="p-done" hidden></div>
         </div>
 
         <!-- 로그인 -->
         <div class="sec">
           <h2 class="sec-title">로그인</h2>
-          <p class="sec-desc">배정이 확정된 사용인과 관리직은 여기서 들어옵니다.</p>
+          <p class="sec-desc">배정이 확정된 사용인과 관리직은 여기서 들어옵니다. <span class="helper">회색 버튼은 로그인 없이, 주황 버튼은 로그인 후 진행하는 동작입니다.</span></p>
           <div class="fields">
             <div class="row2">
               <div class="field"><label for="l-no">GP 사용인번호 <span class="req">*</span></label><input id="l-no" class="mono" inputmode="numeric" placeholder="예: 412133" autocomplete="off"></div>

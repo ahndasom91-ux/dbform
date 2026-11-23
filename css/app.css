@@ -1,8 +1,9 @@
 /* 기계약DB 배정 시스템 - 화면 스타일 (prototype.html 과 동일 토큰) */
   :root {
-    --primary: #0f766e; --primary-dark: #115e59; --primary-soft: #effbf8; --primary-line: #b6e0d8;
+    --primary: #ff9b00; --primary-dark: #e68a00; --primary-soft: #fff6e8; --primary-line: #ffd9a3;
+    --secondary: #737373; --secondary-dark: #5c5c5c; --secondary-soft: #f2f2f2;
     --bg: #f3f5f6; --card: #ffffff; --card-sub: #f7f9f9;
-    --text: #1f2328; --sub: #626a72; --muted: #8d959d; --line: #e3e7e9; --line-soft: #eef1f2;
+    --text: #1f2328; --sub: #737373; --muted: #8d959d; --line: #e3e7e9; --line-soft: #eef1f2;
     --ok: #15803d; --ok-bg: #edfaf0; --ok-line: #b9e4c5;
     --warn: #a1600a; --warn-bg: #fdf6e7; --warn-line: #ecd6a4;
     --stop: #be123c; --stop-bg: #fdf0f3; --stop-line: #f3c2ce;
@@ -13,7 +14,8 @@
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --primary: #5ec8b8; --primary-dark: #8fded1; --primary-soft: #16302e; --primary-line: #2c5b55;
+      --primary: #ffb547; --primary-dark: #ffc870; --primary-soft: #33240f; --primary-line: #5b4120;
+      --secondary: #9a9a9a; --secondary-dark: #b5b5b5; --secondary-soft: #2a2a2a;
       --bg: #14181a; --card: #1c2124; --card-sub: #23292c;
       --text: #e9edee; --sub: #a3acb1; --muted: #7d868c; --line: #2e3538; --line-soft: #262c2f;
       --ok: #6ed08c; --ok-bg: #16301f; --ok-line: #2d5738;
@@ -25,7 +27,8 @@
     }
   }
   :root[data-theme="dark"] {
-    --primary: #5ec8b8; --primary-dark: #8fded1; --primary-soft: #16302e; --primary-line: #2c5b55;
+    --primary: #ffb547; --primary-dark: #ffc870; --primary-soft: #33240f; --primary-line: #5b4120;
+      --secondary: #9a9a9a; --secondary-dark: #b5b5b5; --secondary-soft: #2a2a2a;
     --bg: #14181a; --card: #1c2124; --card-sub: #23292c;
     --text: #e9edee; --sub: #a3acb1; --muted: #7d868c; --line: #2e3538; --line-soft: #262c2f;
     --ok: #6ed08c; --ok-bg: #16301f; --ok-line: #2d5738;
@@ -99,6 +102,9 @@
   .btn { padding: 11px 16px; border: 0; border-radius: 11px; background: var(--primary); color: #fff; font-weight: 700; transition: background .15s; }
   .btn:hover { background: var(--primary-dark); }
   .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn.secondary { background: var(--secondary); }
+  .btn.secondary:hover { background: var(--secondary-dark); }
+  .btn-ghost.secondary { border-color: var(--secondary); color: var(--secondary); }
   .btn-ghost { padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--text); font-size: 12.5px; font-weight: 700; }
   .btn-ghost:hover { border-color: var(--primary); color: var(--primary); }
   .btn-ghost.danger:hover { border-color: var(--stop); color: var(--stop); }
