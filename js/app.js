@@ -144,12 +144,15 @@
     var forManager = isManager();
     var month = S.boot.month;
     var formUrl = S.boot.config.form_url;
+    var formId = (/\/d\/([^\/?#]+)/.exec(formUrl || '') || [])[1];
+    var formDl = formId ? 'https://drive.google.com/uc?export=download&id=' + encodeURIComponent(formId) : '';
     return '<div class="sec" id="a-form">' +
       '<h2 class="sec-title">' + monthKo(month) + (type === '제외' ? ' 제외 신청' : ' 신규 신청') + (forManager ? ' <span class="helper">(산하 사용인 대리)</span>' : '') + '</h2>' +
       '<p class="sec-desc">' + (type === '제외' ? '처리되면 다음 달부터 배정에서 빠집니다. 이미 받은 이번 달 배정분 피드백은 제출해야 합니다.' : '신청서 양식을 받아 작성한 뒤 촬영하거나 파일로 올립니다.') + '</p>' +
       (forManager ? '<div class="field"><label for="a-who">대상 사용인 <span class="req">*</span></label><select id="a-who">' + people.map(function (u) { return '<option value="' + esc(u.no) + '">' + esc(u.name + ' · ' + (u.br || u.unit || u.hq)) + '</option>'; }).join('') + '</select></div>' : '') +
-      '<div class="stepcard"><div class="sc-head"><div class="sc-no">1</div><div><div class="sc-title">신청서 양식 받기</div><div class="sc-desc">양식은 Google Drive 에서 열립니다.</div></div></div>' +
-      '<div class="btn-row">' + (formUrl ? '<a class="btn-ghost" href="' + esc(formUrl) + '" target="_blank" rel="noopener" style="text-align:center;text-decoration:none">신청서 양식 열기</a>' : '<span class="helper">양식 파일이 아직 등록되지 않았습니다. RP영업지원팀 안다솜 과장에게 받은 양식을 사용해 주세요.</span>') + '</div></div>' +
+      '<div class="stepcard"><div class="sc-head"><div class="sc-no">1</div><div><div class="sc-title">신청서 양식 받기</div></div></div>' +
+      '<div class="btn-row">' + (formUrl ? '<a class="btn-ghost" href="' + esc(formUrl) + '" target="_blank" rel="noopener" style="flex:1;text-align:center;text-decoration:none">신청서 양식 열기</a>' +
+        (formDl ? '<a class="btn-ghost" href="' + esc(formDl) + '" target="_blank" rel="noopener" style="flex:1;text-align:center;text-decoration:none">⬇ PDF 다운로드</a>' : '') :'<span class="helper">양식 파일이 아직 등록되지 않았습니다. RP영업지원팀 안다솜 과장에게 받은 양식을 사용해 주세요.</span>') + '</div></div>' +
       '<div class="stepcard"><div class="sc-head"><div class="sc-no">2</div><div><div class="sc-title">작성한 신청서 촬영 또는 첨부' + (forManager ? ' <span class="helper">(대리 신청도 필수)</span>' : '') + '</div><div class="sc-desc">글자가 선명하고 신청서 전체가 보이도록 촬영해 주세요. PDF·JPG·PNG, ' + S.boot.config.max_upload_mb + 'MB 이하.</div></div></div>' +
       '<div class="upload-box"><button class="upload-btn" type="button" id="a-cam">📷 휴대폰으로 촬영<small>후면 카메라가 바로 열립니다</small></button>' +
       '<button class="upload-btn" type="button" id="a-file">📎 사진·파일 선택<small>PDF 또는 이미지</small></button></div><div id="a-filechip"></div></div>' +
