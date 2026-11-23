@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
-<title>기계약DB 배정 시스템</title>
+<title>기계약DB 시스템</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
@@ -37,40 +37,84 @@ setTimeout(function () { var l = document.getElementById('l-loading'); if (l && 
     <header class="card-header" style="justify-content:center;text-align:center">
       <div>
         <span class="brand">기계약DB</span>
-        <h1 class="title">기계약DB 배정 시스템</h1>
-        <p class="subtitle">본부 · 이름 · 휴대폰번호로 본인 확인 후 이용합니다</p>
+        <h1 class="title">기계약DB 시스템</h1>
+        <p class="subtitle">기계약(고아계약) DB 신청부터 배정 · 피드백까지 한곳에서</p>
       </div>
     </header>
     <div class="login">
       <div class="loading" id="l-loading"><div class="spinner"></div><span>서버 연결 중…</span></div>
       <pre id="l-diag" hidden style="font-size:11px;line-height:1.5;white-space:pre-wrap;color:#8a6d1f;background:#fff8e1;border:1px solid #f0d78c;border-radius:8px;padding:8px 10px;margin:8px 0"></pre>
-      <div class="fields" id="l-form" hidden>
-        <div class="field">
-          <label for="l-hq">소속 본부 <span class="req">*</span></label>
-          <select id="l-hq"><option value="">선택하세요</option></select>
+      <div id="l-form" hidden>
+
+        <!-- 이용 안내 -->
+        <div class="sec" style="padding-top:0">
+          <h2 class="sec-title">이용 안내</h2>
+          <div class="stepcard"><div class="sc-head"><div class="sc-no">1</div><div><div class="sc-title">신청서 제출 <span class="helper">(로그인 없이)</span></div><div class="sc-desc">신청서 양식을 받아 작성한 뒤 촬영하거나 파일로 올립니다. GP 사용인번호 · 이름 · 휴대폰번호 · 희망지역(1~3순위)을 함께 입력합니다.</div></div></div></div>
+          <div class="stepcard"><div class="sc-head"><div class="sc-no">2</div><div><div class="sc-title">확인 · 배정</div><div class="sc-desc">RP영업지원팀이 신청서를 확인하고 배정을 확정합니다. 진행 상태는 접수번호로 안내됩니다.</div></div></div></div>
+          <div class="stepcard"><div class="sc-head"><div class="sc-no">3</div><div><div class="sc-title">로그인 후 배정 확인 · 피드백 제출</div><div class="sc-desc">배정이 확정되면 사용인번호 · 이름 · 휴대폰번호로 로그인해 배정 결과를 확인하고 컨택 피드백을 제출합니다.</div></div></div></div>
+          <div class="btn-row"><button class="btn" type="button" id="p-open">📝 신청서 제출하기 <small style="font-weight:normal;opacity:.85">· 처음 신청 · 로그인 불필요</small></button></div>
         </div>
-        <div class="row2">
-          <div class="field">
-            <label for="l-name">이름 <span class="req">*</span></label>
-            <input id="l-name" placeholder="홍길동" autocomplete="off">
-          </div>
-          <div class="field">
-            <label for="l-phone">휴대폰번호 <span class="req">*</span></label>
-            <input id="l-phone" class="mono" inputmode="numeric" placeholder="010-0000-0000" autocomplete="off">
-            <span class="helper">숫자만 입력해도 되고 하이픈(-)을 넣어도 됩니다. 배정자 명단에 등록된 본인 휴대폰번호여야 합니다.</span>
-          </div>
+
+        <!-- 로그인 전 신청서 제출 -->
+        <div class="sec" id="p-form" hidden>
+          <h2 class="sec-title">신청서 제출</h2>
+          <p class="sec-desc">처음 신청하는 사용인은 여기서 제출합니다. 제출 후 배정이 확정되면 아래 로그인으로 들어올 수 있습니다.</p>
+          <div class="stepcard"><div class="sc-head"><div class="sc-no">1</div><div><div class="sc-title">신청서 양식 받기</div><div class="sc-desc">양식은 Google Drive 에서 열립니다. 작성 후 촬영하거나 PDF 로 저장해 주세요.</div></div></div>
+            <div class="btn-row" id="p-formlink"></div></div>
+          <div class="stepcard"><div class="sc-head"><div class="sc-no">2</div><div><div class="sc-title">신청자 정보</div></div></div>
+            <div class="fields">
+              <div class="row2">
+                <div class="field"><label for="p-no">GP 사용인번호 <span class="req">*</span></label><input id="p-no" class="mono" inputmode="numeric" placeholder="예: 412133" autocomplete="off"></div>
+                <div class="field"><label for="p-name">이름 <span class="req">*</span></label><input id="p-name" placeholder="홍길동" autocomplete="off"></div>
+              </div>
+              <div class="row2">
+                <div class="field"><label for="p-hq">본부 <span class="req">*</span></label><input id="p-hq" placeholder="예: 랩스본부" autocomplete="off"></div>
+                <div class="field"><label for="p-br">지점</label><input id="p-br" placeholder="예: 랩스본부직할지점" autocomplete="off"></div>
+              </div>
+              <div class="field"><label for="p-phone">휴대폰번호 <span class="req">*</span></label><input id="p-phone" class="mono" inputmode="numeric" placeholder="010-0000-0000" autocomplete="off">
+                <span class="helper">GP 에 등록된 본인 번호. 로그인할 때 같은 번호를 씁니다. 서버에는 해시값으로만 저장됩니다.</span></div>
+            </div></div>
+          <div class="stepcard"><div class="sc-head"><div class="sc-no">3</div><div><div class="sc-title">희망지역 (1~3순위)</div><div class="sc-desc">1순위부터 채워지고 부족하면 다음 순위로 넘어갑니다. 배정수량은 직책에 따라 자동 산정됩니다.</div></div></div>
+            <div class="fields"><div class="row3">
+              <div class="field"><label for="p-r1">1순위 <span class="req">*</span></label><select id="p-r1"></select></div>
+              <div class="field"><label for="p-r2">2순위</label><select id="p-r2"></select></div>
+              <div class="field"><label for="p-r3">3순위</label><select id="p-r3"></select></div>
+            </div></div></div>
+          <div class="stepcard"><div class="sc-head"><div class="sc-no">4</div><div><div class="sc-title">작성한 신청서 촬영 또는 첨부</div><div class="sc-desc">글자가 선명하고 신청서 전체가 보이도록 촬영해 주세요. PDF·JPG·PNG.</div></div></div>
+            <div class="upload-box"><button class="upload-btn" type="button" id="p-cam">📷 휴대폰으로 촬영<small>후면 카메라가 바로 열립니다</small></button>
+            <button class="upload-btn" type="button" id="p-file">📎 사진·파일 선택<small>PDF 또는 이미지</small></button></div><div id="p-filechip"></div></div>
+          <div class="err" id="p-err" hidden></div>
+          <div class="btn-row"><button class="btn" type="button" id="p-submit" disabled>신청서 제출</button><button class="btn-ghost" type="button" id="p-close" style="flex:0 0 auto">닫기</button></div>
+          <div class="result" id="p-done" hidden></div>
         </div>
-        <div class="err" id="l-err" hidden></div>
-        <button class="btn" type="button" id="l-go">본인 확인하고 들어가기</button>
-        <span class="helper">휴대폰번호는 서버에 원문으로 저장되지 않고 해시값으로만 대조합니다. 5회 연속 실패 시 30분간 잠깁니다.</span>
-        <div style="text-align:center"><button class="inline-link" type="button" id="l-admin-toggle">관리자 비밀번호로 로그인</button></div>
-        <div class="fields" id="l-admin" hidden>
-          <div class="row2">
-            <div class="field"><label for="l-aname">담당자 이름</label><input id="l-aname" placeholder="담당자"></div>
-            <div class="field"><label for="l-apw">관리자 비밀번호</label><input id="l-apw" type="password" autocomplete="current-password"></div>
+
+        <!-- 로그인 -->
+        <div class="sec">
+          <h2 class="sec-title">로그인</h2>
+          <p class="sec-desc">배정이 확정된 사용인과 관리직은 여기서 들어옵니다.</p>
+          <div class="fields">
+            <div class="row2">
+              <div class="field"><label for="l-no">GP 사용인번호 <span class="req">*</span></label><input id="l-no" class="mono" inputmode="numeric" placeholder="예: 412133" autocomplete="off"></div>
+              <div class="field"><label for="l-name">이름 <span class="req">*</span></label><input id="l-name" placeholder="홍길동" autocomplete="off"></div>
+            </div>
+            <div class="field">
+              <label for="l-phone">휴대폰번호 <span class="req">*</span></label>
+              <input id="l-phone" class="mono" inputmode="numeric" placeholder="010-0000-0000" autocomplete="off">
+              <span class="helper">GP 에 등록된 사용인번호 · 휴대폰번호로 로그인합니다. 하이픈(-)은 있어도 없어도 됩니다.</span>
+            </div>
+            <div class="err" id="l-err" hidden></div>
+            <button class="btn" type="button" id="l-go">본인 확인하고 들어가기</button>
+            <span class="helper">휴대폰번호는 서버에 원문으로 저장되지 않고 해시값으로만 대조합니다. 5회 연속 실패 시 30분간 잠깁니다.</span>
+            <div style="text-align:center"><button class="inline-link" type="button" id="l-admin-toggle">관리자 비밀번호로 로그인</button></div>
+            <div class="fields" id="l-admin" hidden>
+              <div class="row2">
+                <div class="field"><label for="l-aname">담당자 이름</label><input id="l-aname" placeholder="담당자"></div>
+                <div class="field"><label for="l-apw">관리자 비밀번호</label><input id="l-apw" type="password" autocomplete="current-password"></div>
+              </div>
+              <button class="btn-ghost" type="button" id="l-ago">관리자로 들어가기</button>
+              <span class="helper">비밀번호는 스프레드시트 config 탭의 admin_password 값입니다.</span>
+            </div>
           </div>
-          <button class="btn-ghost" type="button" id="l-ago">관리자로 들어가기</button>
-          <span class="helper">비밀번호는 스프레드시트 config 탭의 admin_password 값입니다.</span>
         </div>
       </div>
       <div class="err" id="l-boot-err" hidden></div>
@@ -82,7 +126,7 @@ setTimeout(function () { var l = document.getElementById('l-loading'); if (l && 
     <header class="card-header">
       <div style="min-width:0">
         <span class="brand">기계약DB</span>
-        <h1 class="title">기계약DB 배정 시스템</h1>
+        <h1 class="title">기계약DB 시스템</h1>
         <p class="subtitle" id="m-sub">—</p>
       </div>
       <div class="who">
@@ -112,7 +156,7 @@ setTimeout(function () { var l = document.getElementById('l-loading'); if (l && 
     <section class="panel" id="admin" role="tabpanel"></section>
   </main>
 
-  <p class="foot">기계약DB 배정 시스템 · 문의: RP영업지원팀 안다솜 과장</p>
+  <p class="foot">기계약DB 시스템 · 문의: RP영업지원팀 안다솜 과장</p>
 </div>
 
 <div class="toasts" id="toasts"></div>

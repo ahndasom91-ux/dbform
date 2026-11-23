@@ -55,13 +55,19 @@
     }
   }
 
+  var P = { info: null, file: null };   // 로그인 전 화면 상태
+  function publicRegionOptions(blank) {
+    var list = (P.info && P.info.regions && P.info.regions.length) ? P.info.regions : REGIONS;
+    return (blank ? '<option value="">없음</option>' : '') + list.map(function (r) { return '<option>' + esc(r) + '</option>'; }).join('');
+  }
   async function init() {
     warnKakaoInApp();
     try {
       var info = await DB.api('public.info');
-      var sel = $('l-hq');
-      info.hqs.forEach(function (h) { var o = document.createElement('option'); o.textContent = h; sel.appendChild(o); });
-      if (!info.hqs.length) { var o2 = document.createElement('option'); o2.textContent = '(등록된 본부 없음)'; o2.disabled = true; sel.appendChild(o2); }
+      P.info = info;
+      $('p-r1').innerHTML = publicRegionOptions(false); $('p-r2').innerHTML = publicRegionOptions(true); $('p-r3').innerHTML = publicRegionOptions(true);
+      $('p-formlink').innerHTML = info.form_url ? '<a class="btn-ghost" href="' + esc(info.form_url) + '" target="_blank" rel="noopener" style="text-align:center;text-decoration:none">신청서 양식 열기</a>'
+        : '<span class="helper">양식 파일이 아직 등록되지 않았습니다. RP영업지원팀 안다솜 과장에게 받은 양식을 사용해 주세요.</span>';
       $('l-loading').hidden = true; $('l-form').hidden = false; if (window.diagHide) diagHide();
       if (DB.token()) { try { var b = await DB.api('me.bootstrap'); enterMain(b); } catch (e) { DB.setToken(''); } }
     } catch (e) {
@@ -73,11 +79,11 @@
   }
   $('l-go').addEventListener('click', async function () {
     var err = $('l-err'); err.hidden = true;
-    var hq = $('l-hq').value, name = $('l-name').value.trim(), phone = $('l-phone').value.trim();
-    if (!hq || !name || !phone) { err.textContent = '본부, 이름, 휴대폰번호를 모두 입력해 주세요.'; err.hidden = false; return; }
+    var no = $('l-no').value.trim(), name = $('l-name').value.trim(), phone = $('l-phone').value.trim();
+    if (!no || !name || !phone) { err.textContent = '사용인번호, 이름, 휴대폰번호를 모두 입력해 주세요.'; err.hidden = false; return; }
     $('l-go').disabled = true;
     try {
-      var r = await DB.api('auth.login', { hq: hq, name: name, phone: phone });
+      var r = await DB.api('auth.login', { no: no, name: name, phone: phone });
       DB.setToken(r.token);
       var b = await DB.api('me.bootstrap');
       enterMain(b);
@@ -95,6 +101,51 @@
     } catch (e) { err.textContent = e.message; err.hidden = false; }
   });
   $('l-apw').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('l-ago').click(); });
+
+  /* ───────── 로그인 전 신청서 제출 ───────── */
+  $('p-open').addEventListener('click', function () { $('p-form').hidden = false; $('p-done').hidden = true; $('p-form').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  $('p-close').addEventListener('click', function () { $('p-form').hidden = true; P.file = null; $('p-filechip').innerHTML = ''; $('p-submit').disabled = true; });
+  $('p-cam').addEventListener('click', function () { $('cam-input').dataset.target = 'public'; $('cam-input').value = ''; $('cam-input').click(); });
+  $('p-file').addEventListener('click', function () { $('file-input').dataset.target = 'public'; $('file-input').value = ''; $('file-input').click(); });
+  function onPublicFile(e) {
+    var f = e.target.files && e.target.files[0];
+    if (!f) return;
+    var okTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+    if (okTypes.indexOf(f.type) < 0) { toast('파일 형식이 맞지 않습니다. PDF 또는 JPG·PNG·WEBP 이미지만 올릴 수 있습니다.', 'stop'); return; }
+    var max = ((P.info && P.info.max_upload_mb) || 10) * 1048576;
+    if (f.size > max) { toast('파일이 ' + ((P.info && P.info.max_upload_mb) || 10) + 'MB를 넘습니다. 해상도를 낮춰 다시 촬영해 주세요.', 'stop'); return; }
+    P.file = f;
+    var chip = $('p-filechip'), isImg = f.type.indexOf('image/') === 0;
+    chip.innerHTML = '<div class="filechip">' + (isImg ? '<img id="p-thumb" alt="">' : '<span style="font-size:22px">📄</span>') +
+      '<div><div class="fn">' + esc(f.name) + '</div><div class="fs">' + fmtBytes(f.size) + ' · ' + esc(f.type) + '</div></div>' +
+      '<button class="btn-ghost btn-sm danger" type="button" id="p-rm">제거</button></div>';
+    if (isImg) { var r = new FileReader(); r.onload = function () { var t = $('p-thumb'); if (t) t.src = r.result; }; r.readAsDataURL(f); }
+    $('p-rm').addEventListener('click', function () { P.file = null; chip.innerHTML = ''; $('p-submit').disabled = true; });
+    $('p-submit').disabled = false;
+  }
+  $('p-submit').addEventListener('click', async function () {
+    var err = $('p-err'); err.hidden = true;
+    var no = $('p-no').value.trim(), name = $('p-name').value.trim(), hq = $('p-hq').value.trim(), br = $('p-br').value.trim(), phone = $('p-phone').value.trim();
+    if (!no || !name || !hq || !phone) { err.textContent = '사용인번호, 이름, 본부, 휴대폰번호를 모두 입력해 주세요.'; err.hidden = false; return; }
+    var regions = [$('p-r1').value, $('p-r2').value, $('p-r3').value].map(function (v) { return (v || '').trim(); }).filter(Boolean);
+    if (!regions.length) { err.textContent = '희망지역 1순위를 선택해 주세요.'; err.hidden = false; return; }
+    var dup = regions.filter(function (r, i) { return regions.indexOf(r) !== i; });
+    if (dup.length) { err.textContent = '같은 지역을 두 번 선택했습니다: ' + dup[0]; err.hidden = false; return; }
+    if (!P.file) { err.textContent = '작성한 신청서를 촬영하거나 첨부해 주세요.'; err.hidden = false; return; }
+    var btn = $('p-submit'); btn.disabled = true; btn.textContent = '업로드 중…';
+    try {
+      var r = await DB.api('apply.public', { no: no, name: name, hq: hq, br: br, phone: phone, regions: regions,
+        file: { name: P.file.name, type: P.file.type, base64: await DB.fileToBase64(P.file) } });
+      P.file = null; $('p-filechip').innerHTML = '';
+      var done = $('p-done'); done.hidden = false;
+      done.innerHTML = '<div class="result-top"><div class="result-who">' + esc(r.name) + ' 님 신청 접수 <span>· ' + esc(monthKo(r.month)) + '</span></div>' + pillOf('접수') + '</div>' +
+        '<div class="kv"><div class="kv-row"><dt>접수번호</dt><dd class="mono">' + esc(r.id) + '</dd></div><div class="kv-row"><dt>다음</dt><dd>RP영업지원팀이 신청서를 확인하고 배정을 확정합니다. 확정되면 위 사용인번호 · 이름 · 휴대폰번호로 로그인해 배정 결과를 볼 수 있습니다.</dd></div></div>';
+      done.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      toast('접수되었습니다. 접수번호 ' + r.id, 'ok');
+      ['p-no', 'p-name', 'p-hq', 'p-br', 'p-phone'].forEach(function (id) { $(id).value = ''; });
+    } catch (e) { err.textContent = e.message; err.hidden = false; }
+    finally { btn.textContent = '신청서 제출'; btn.disabled = !P.file; }
+  });
 
   function enterMain(boot) {
     S.boot = boot; S.me = boot.me; S.applyFormType = null; S.pendingFile = null; S.fbValidation = null; S.statMonth = boot.month;
@@ -261,8 +312,14 @@
     $('a-rm').addEventListener('click', function () { S.pendingFile = null; chip.innerHTML = ''; $('a-submit').disabled = true; });
     $('a-submit').disabled = false;
   }
-  $('cam-input').addEventListener('change', onApplyFile);
-  $('file-input').addEventListener('change', onApplyFile);
+  function onAnyFile(e) {
+    var target = e.target.dataset.target || 'apply';
+    e.target.dataset.target = '';
+    if (target === 'public') return onPublicFile(e);
+    return onApplyFile(e);
+  }
+  $('cam-input').addEventListener('change', onAnyFile);
+  $('file-input').addEventListener('change', onAnyFile);
 
   async function submitApplication() {
     var type = $('a-type').value;
