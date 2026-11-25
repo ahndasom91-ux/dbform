@@ -433,9 +433,23 @@
       h += '</tbody></table></div></div><hr class="rule"><div class="sec"><h2 class="sec-title">피드백 제출 현황</h2>' +
         '<div class="table-wrap"><table><thead><tr><th>대상자</th><th style="text-align:right">배정</th><th style="text-align:right">기재</th><th>검토상태</th><th>최근 제출</th></tr></thead><tbody>';
       if (!data.rows.length) h += '<tr><td colspan="5" class="dash">이번 달 배정된 사용인이 없습니다.</td></tr>';
-      data.rows.forEach(function (r) { h += '<tr><td class="name">' + esc(r.user.name) + '<span class="cell-sub">' + esc(r.user.br || r.user.unit) + '</span></td><td class="num mono">' + r.count + '</td><td class="num mono">' + r.filled + '</td><td>' + pillOf(r.review) + '</td><td class="mono">' + (r.at ? esc(r.at.slice(5, 16).replace('T', ' ')) + ' <span class="cell-sub">v' + r.ver + (r.note ? ' · ' + esc(r.note) : '') + '</span>' : '<span class="dash">—</span>') + '</td></tr>'; });
+      data.rows.forEach(function (r) { h += '<tr><td class="name">' + esc(r.user.name) + '<span class="cell-sub">' + esc(r.user.br || r.user.unit) + '</span></td><td class="num mono">' + r.count + '</td><td class="num mono">' + r.filled + '</td><td>' + pillOf(r.review) + '</td><td class="mono">' + (r.at ? esc(r.at.slice(5, 16).replace('T', ' ')) + ' <span class="cell-sub">v' + r.ver + (r.by ? ' · ' + esc(r.by) : '') + (r.note ? ' · ' + esc(r.note) : '') + '</span>' : '<span class="dash">—</span>') + '</td></tr>'; });
       h += '</tbody></table></div><p class="helper">피드백 파일 자체는 Drive 에만 저장되고 관리자만 엽니다. 여기에는 건수와 검토상태만 표시됩니다.</p></div>';
+      // 관리직 대리 제출: 산하 사용인 피드백을 모아서 올림
+      var canUploadM = data.rows.some(function (r) { return r.count > 0; });
+      h += '<hr class="rule"><div class="sec"><h2 class="sec-title">피드백 모아서 제출 <span class="helper">(산하 사용인 대리)</span></h2>' +
+        '<p class="sec-desc">사용인이 직접 내지 못한 피드백을 대신 올립니다. <b>사람별 파일을 하나씩</b> 올려도 되고, <b>한 파일에 사람별 시트</b>로 묶어도 되고, <b>한 시트에 전부 붙여넣은 파일</b>도 됩니다. 행마다 있는 사용인번호로 사람을 나눠 각각 제출로 기록합니다.</p>' +
+        '<div class="note"><b>업로드 전에 자동으로 확인하는 것</b><ul>' +
+        '<li>파일 형식: <span class="mono">.xlsx</span> · 1행 열 제목이 아래와 순서까지 같은 시트만 읽습니다 (그 외 시트는 무시)</li>' +
+        '<li>사용인번호 열이 비어 있는 행이 있으면 받지 않습니다 · 계약번호 열은 수정 금지</li>' +
+        '<li>사람마다 행 수 = 그 사람의 배정 건수 · 내 범위 밖이거나 배정이 없는 사람은 제외하고 나머지만 접수</li>' +
+        '<li>컨택결과: ' + esc(cfg.feedback_results.join(' / ')) + ' · 컨택일자: 2026-11-05 형식</li></ul>' +
+        '<div class="chips" style="margin-top:8px">' + cfg.feedback_headers.map(function (c) { return '<span class="chip">' + esc(c) + '</span>'; }).join('') + '</div></div>' +
+        '<div class="upload-box"><button class="upload-btn" type="button" id="f-pick"' + (canUploadM ? '' : ' disabled') + '>📊 피드백 엑셀 선택<small>' + (canUploadM ? '검사 통과한 사람 분만 제출됩니다' : '이번 달 배정된 사용인이 없습니다') + '</small></button></div>' +
+        '<div id="f-checks"></div><div class="btn-row" id="f-actions" hidden><button class="btn" type="button" id="f-submit">검사 통과 · 제출하기</button></div></div>';
       el.innerHTML = h;
+      $('f-pick').addEventListener('click', function () { $('fb-input').value = ''; $('fb-input').click(); });
+      $('f-submit').addEventListener('click', submitFeedback);
       return;
     }
 
@@ -462,7 +476,7 @@
     var canUpload = al && al.status === '배정';
     h2 += '<div class="note"><b>업로드 전에 자동으로 확인하는 것</b><ul>' +
       '<li>파일 형식: <span class="mono">.xlsx</span> 만 가능</li>' +
-      '<li>시트명 <span class="mono">' + esc(cfg.feedback_sheet) + '</span> · 1행 열 제목이 아래와 순서까지 같아야 함</li>' +
+      '<li>1행 열 제목이 아래와 순서까지 같은 시트를 읽습니다 (보통 <span class="mono">' + esc(cfg.feedback_sheet) + '</span> 시트)</li>' +
       '<li>행 수 = 배정 건수' + (canUpload ? ' (' + al.count + '건)' : '') + ' · 계약번호 열은 수정 금지</li>' +
       '<li>컨택결과: ' + esc(cfg.feedback_results.join(' / ')) + ' · 컨택일자: 2026-11-05 형식</li></ul>' +
       '<div class="chips" style="margin-top:8px">' + cfg.feedback_headers.map(function (c) { return '<span class="chip">' + esc(c) + '</span>'; }).join('') + '</div></div>' +
@@ -488,42 +502,71 @@
     function add(label, state, msg) { checks.push({ label: label, state: state, msg: msg }); if (state === 'fail') fatal = true; }
     if (!/\.xlsx$/i.test(fileName)) { add('파일 형식', 'fail', '파일 형식이 맞지 않습니다. 배정받은 엑셀(.xlsx) 파일을 올려주세요.'); return { ok: false, checks: checks }; }
     add('파일 형식', 'pass', '.xlsx');
-    var ws = wb.Sheets[FB_SHEET];
-    if (!ws) { add('시트명', 'fail', "양식이 다릅니다. '" + FB_SHEET + "' 시트를 찾을 수 없습니다. (있는 시트: " + wb.SheetNames.join(', ') + ')'); return { ok: false, checks: checks }; }
-    add('시트명', 'pass', FB_SHEET);
-    var aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
-    var header = (aoa[0] || []).map(function (c) { return String(c).trim(); });
-    var missing = FB_HEADERS.filter(function (c) { return header.indexOf(c) < 0; });
-    if (missing.length) { add('열 제목', 'fail', '양식이 다릅니다. 열 제목이 바뀌었거나 빠졌습니다: ' + missing.join(', ')); return { ok: false, checks: checks }; }
-    if (!FB_HEADERS.every(function (c, i) { return header[i] === c; })) add('열 제목', 'fail', '양식이 다릅니다. 열 순서가 바뀌었습니다. 원본 양식의 순서를 유지해 주세요.');
-    else add('열 제목', 'pass', FB_HEADERS.length + '개 열 일치');
-    var rows = aoa.slice(1).filter(function (r) { return r.some(function (c) { return String(c).trim() !== ''; }); });
-    var exp = S.feed && S.feed.alloc ? S.feed.alloc.count : 0;
-    if (exp > 0 && rows.length !== exp) add('행 수', 'fail', '배정 건수(' + exp + '건)와 파일 행 수(' + rows.length + '건)가 다릅니다. 행을 추가하거나 삭제하지 마세요.'); else add('행 수', 'pass', rows.length + '행');
-    var iC = FB_HEADERS.indexOf('계약번호'), iE = FB_HEADERS.indexOf('사용인번호'), iD = FB_HEADERS.indexOf('컨택일자'), iR = FB_HEADERS.indexOf('컨택결과'), iM = FB_HEADERS.indexOf('상세내용');
-    var badC = [], badE = [], badD = [], badR = [], empty = 0, filled = 0;
-    rows.forEach(function (r, k) {
-      var n = k + 2;
-      if (iC >= 0 && !/^\d{4}\*{4,}$/.test(String(r[iC] || '').trim())) badC.push(n);
-      if (iE >= 0 && String(r[iE] || '').trim() !== S.me.no) badE.push(n);
-      var d = String(r[iD] || '').trim(), res = String(r[iR] || '').trim(), m = String(r[iM] || '').trim();
-      if (!d && !res && !m) { empty++; return; }
-      filled++;
-      if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) badD.push(n);
-      if (res && FB_RESULTS.indexOf(res) < 0) badR.push(n);
+    // 열 제목이 양식과 같은 시트를 전부 읽는다 (개인 파일 '피드백' 시트 · 사람별 시트 · 합본 시트). 나머지 시트(상세·요약 등)는 무시.
+    var used = [], orderBad = [], rows = [], header = FB_HEADERS.slice();
+    wb.SheetNames.forEach(function (name) {
+      var aoa = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: false, defval: '' });
+      var hdr = (aoa[0] || []).map(function (c) { return String(c).trim(); });
+      if (!FB_HEADERS.every(function (c) { return hdr.indexOf(c) >= 0; })) return;
+      if (!FB_HEADERS.every(function (c, i) { return hdr[i] === c; })) { orderBad.push(name); return; }
+      used.push(name);
+      aoa.slice(1).forEach(function (r, k) { if (r.some(function (c) { return String(c).trim() !== ''; })) rows.push({ r: r.slice(0, FB_HEADERS.length), where: name + ' ' + (k + 2) + '행' }); });
     });
-    if (badC.length) add('계약번호', 'fail', '계약번호 열이 수정되었습니다. 원본 그대로 두세요. (' + badC.slice(0, 5).join(', ') + '행' + (badC.length > 5 ? ' 외' : '') + ')'); else add('계약번호', 'pass', '마스킹 원본 유지');
-    if (badE.length) add('사용인번호', 'fail', '본인 배정 파일이 아닙니다. 사용인번호가 로그인 사용자와 다릅니다. (' + badE.slice(0, 5).join(', ') + '행)'); else add('사용인번호', 'pass', S.me.no);
-    if (badR.length) add('컨택결과', 'fail', '컨택결과는 (' + FB_RESULTS.join(' / ') + ') 중 하나여야 합니다. (' + badR.join(', ') + '행)'); else add('컨택결과', 'pass', '허용값 확인');
-    if (badD.length) add('컨택일자', 'fail', '컨택일자 형식이 올바르지 않습니다 (예: 2026-11-05). (' + badD.join(', ') + '행)'); else add('컨택일자', 'pass', '날짜 형식 확인');
+    if (orderBad.length) { add('열 제목', 'fail', '양식이 다릅니다. 열 순서가 바뀐 시트: ' + orderBad.join(', ') + '. 원본 양식의 순서를 유지해 주세요.'); return { ok: false, checks: checks }; }
+    if (!used.length) { add('시트', 'fail', "양식 시트를 찾을 수 없습니다. 1행 열 제목이 양식과 같은 시트가 없습니다. (있는 시트: " + wb.SheetNames.join(', ') + ')'); return { ok: false, checks: checks }; }
+    add('시트', 'pass', used.length === 1 ? used[0] : used.length + '개 시트 (' + used.slice(0, 4).join(', ') + (used.length > 4 ? ' …' : '') + ')');
+    add('열 제목', 'pass', FB_HEADERS.length + '개 열 일치');
+    if (!rows.length) { add('행 수', 'fail', '데이터 행이 없습니다.'); return { ok: false, checks: checks }; }
+    var iC = FB_HEADERS.indexOf('계약번호'), iE = FB_HEADERS.indexOf('사용인번호'), iD = FB_HEADERS.indexOf('컨택일자'), iR = FB_HEADERS.indexOf('컨택결과'), iM = FB_HEADERS.indexOf('상세내용');
+    var badC = [], noE = [], badD = [], badR = [], byNo = {}, order = [];
+    rows.forEach(function (x) {
+      var r = x.r;
+      if (iC >= 0 && !/^\d{4}\*{4,}$/.test(String(r[iC] || '').trim())) badC.push(x.where);
+      var no = String(iE >= 0 ? r[iE] : '').trim().replace(/\.0+$/, '');
+      if (!no) { noE.push(x.where); return; }
+      var d = String(r[iD] || '').trim(), res = String(r[iR] || '').trim(), m = String(r[iM] || '').trim();
+      if (!byNo[no]) { byNo[no] = { no: no, rows: [], filled: 0, empty: 0 }; order.push(no); }
+      byNo[no].rows.push(r);
+      if (!d && !res && !m) { byNo[no].empty++; return; }
+      byNo[no].filled++;
+      if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) badD.push(x.where);
+      if (res && FB_RESULTS.indexOf(res) < 0) badR.push(x.where);
+    });
+    function few(a) { return a.slice(0, 4).join(', ') + (a.length > 4 ? ' 외 ' + (a.length - 4) : ''); }
+    if (badC.length) add('계약번호', 'fail', '계약번호 열이 수정되었습니다. 원본 그대로 두세요. (' + few(badC) + ')'); else add('계약번호', 'pass', '마스킹 원본 유지');
+    if (noE.length) add('사용인번호', 'fail', '사용인번호가 비어 있는 행이 있어 누구의 피드백인지 알 수 없습니다. (' + few(noE) + ')');
+    if (badR.length) add('컨택결과', 'fail', '컨택결과는 (' + FB_RESULTS.join(' / ') + ') 중 하나여야 합니다. (' + few(badR) + ')'); else add('컨택결과', 'pass', '허용값 확인');
+    if (badD.length) add('컨택일자', 'fail', '컨택일자 형식이 올바르지 않습니다 (예: 2026-11-05). (' + few(badD) + ')'); else add('컨택일자', 'pass', '날짜 형식 확인');
+    if (fatal) return { ok: false, checks: checks };
+    // 사람별 대조: 본인(사용인) 또는 범위 안 사용인(관리직), 이번 달 배정, 행 수 = 배정 건수
+    var expect = {};
+    if (isManager()) (S.feed && S.feed.rows || []).forEach(function (x) { expect[String(x.user.no)] = { name: x.user.name, count: x.count }; });
+    else if (S.feed && S.feed.alloc && S.feed.alloc.status === '배정') expect[String(S.me.no)] = { name: S.me.name, count: S.feed.alloc.count };
+    var people = [], okRows = [], filled = 0, empty = 0, nrows = 0;
+    order.forEach(function (no) {
+      var g = byNo[no], e = expect[no], item = { no: no, name: e ? e.name : '', rows: g.rows.length, filled: g.filled, empty: g.empty };
+      if (!e) { item.skip = isManager() ? '내 범위에 없거나 배정이 없는 사용인' : '본인 사용인번호가 아님'; }
+      else if (e.count > 0 && g.rows.length !== e.count) { item.skip = '행 수 불일치 (배정 ' + e.count + '건 · 파일 ' + g.rows.length + '행)'; }
+      else { okRows = okRows.concat(g.rows); filled += g.filled; empty += g.empty; nrows += g.rows.length; }
+      people.push(item);
+    });
+    var okPeople = people.filter(function (x) { return !x.skip; }), skipped = people.filter(function (x) { return x.skip; });
+    if (!okPeople.length) { add('대상자', 'fail', '접수할 수 있는 사용인이 없습니다. ' + skipped.map(function (x) { return (x.name || x.no) + ': ' + x.skip; }).join(' / ')); return { ok: false, checks: checks, people: people }; }
+    add('대상자', skipped.length ? 'warn' : 'pass', okPeople.length + '명 접수 가능' + (skipped.length ? ' · ' + skipped.length + '명 제외 (아래 표 참고)' : '') + (isManager() ? '' : ' · ' + S.me.no));
     if (empty) add('미기재', 'warn', '아직 기재하지 않은 행이 ' + empty + '건 있습니다. 부분 제출로 올릴 수 있고, 나중에 다시 올리면 됩니다.'); else add('미기재', 'pass', '전 건 기재');
-    return { ok: !fatal, checks: checks, rows: rows.length, filled: filled, empty: empty, aoa: [header].concat(rows) };
+    return { ok: true, checks: checks, rows: nrows, filled: filled, empty: empty, people: people, aoa: [header].concat(okRows) };
   }
   function showChecks(v, fileName) {
     var box = $('f-checks');
     var h = '<div class="checks">' + (fileName ? '<div class="helper">검사 파일: <span class="mono">' + esc(fileName) + '</span></div>' : '');
     v.checks.forEach(function (c) { h += '<div class="check ' + c.state + '"><span class="ic">' + (c.state === 'pass' ? '✓' : c.state === 'warn' ? '!' : '✕') + '</span><div><b>' + esc(c.label) + '</b><small>' + esc(c.msg) + '</small></div></div>'; });
-    box.innerHTML = h + '</div>';
+    h += '</div>';
+    if (v.people && v.people.length) {
+      h += '<div class="table-wrap" style="margin-top:8px"><table><thead><tr><th>사용인</th><th style="text-align:right">행</th><th style="text-align:right">기재</th><th>결과</th></tr></thead><tbody>';
+      v.people.forEach(function (x) { h += '<tr><td class="name">' + esc(x.name || '(미등록)') + '<span class="cell-sub mono">' + esc(x.no) + '</span></td><td class="num mono">' + x.rows + '</td><td class="num mono">' + x.filled + '</td><td>' + (x.skip ? pillOf('제외') + '<span class="cell-sub">' + esc(x.skip) + '</span>' : pillOf(x.empty ? '부분제출' : '검토중')) + '</td></tr>'; });
+      h += '</tbody></table></div>';
+    }
+    box.innerHTML = h;
     $('f-actions').hidden = !v.ok;
     S.fbValidation = v.ok ? v : null;
     if (!v.ok) toast('업로드할 수 없습니다. 표시된 항목을 고친 뒤 다시 선택해 주세요.', 'stop');
@@ -546,7 +589,9 @@
     try {
       var r = await call('feedback.submit', { rows: v.aoa, file: { name: v.file.name, base64: await DB.fileToBase64(v.file) } });
       S.fbValidation = null;
-      toast(r.state === '검토중' ? '제출되었습니다. 관리자가 확인하면 「제출완료」로 바뀝니다.' : '부분 제출되었습니다. 나머지를 기재해 다시 올리면 검토 대상이 됩니다.', 'ok');
+      var n = (r.people || []).length;
+      if (n > 1) toast(n + '명 분 제출되었습니다 (' + r.people.map(function (x) { return x.name + ' ' + x.filled + '/' + x.rows; }).join(', ') + ')' + (r.skipped && r.skipped.length ? ' · ' + r.skipped.length + '명 제외' : ''), 'ok');
+      else toast(r.state === '검토중' ? '제출되었습니다. 관리자가 확인하면 「제출완료」로 바뀝니다.' : '부분 제출되었습니다. 나머지를 기재해 다시 올리면 검토 대상이 됩니다.', 'ok');
       renderFeed();
     } catch (e) { toast(e.message, 'stop'); btn.disabled = false; btn.textContent = '검사 통과 · 제출하기'; }
   }
@@ -676,7 +721,7 @@
       '<div class="table-wrap"><table><thead><tr><th>사용인</th><th style="text-align:right">배정</th><th style="text-align:right">기재</th><th>최근 제출</th><th>파일</th><th>상태</th><th>처리</th></tr></thead><tbody>';
     if (!A.fbs.length) h += '<tr><td colspan="7" class="dash">제출된 피드백이 없습니다.</td></tr>';
     A.fbs.forEach(function (f, i) {
-      h += '<tr><td class="name">' + esc(f.name) + '<span class="cell-sub">' + esc([f.hq, f.br].filter(Boolean).join(' · ')) + '</span></td><td class="num mono">' + f.count + '</td><td class="num mono">' + f.filled + '</td><td class="mono">' + esc(f.at.slice(5, 16).replace('T', ' ')) + '<span class="cell-sub">v' + f.ver + '</span></td>' +
+      h += '<tr><td class="name">' + esc(f.name) + '<span class="cell-sub">' + esc([f.hq, f.br].filter(Boolean).join(' · ')) + '</span></td><td class="num mono">' + f.count + '</td><td class="num mono">' + f.filled + '</td><td class="mono">' + esc(f.at.slice(5, 16).replace('T', ' ')) + '<span class="cell-sub">v' + f.ver + (f.by ? ' · ' + esc(f.by) : '') + '</span></td>' +
         '<td><a class="link thumb-hover" data-thumb="' + esc((String(f.file_url || '').match(/\/d\/([^\/]+)/) || [])[1] || '') + '" href="' + esc(f.file_url) + '" target="_blank" rel="noopener">열기</a></td><td>' + pillOf(f.review) + (f.note ? '<span class="cell-sub">' + esc(f.note) + '</span>' : '') + '</td>' +
         '<td>' + (f.review === '제출완료' ? '<span class="helper">확인 ' + esc(f.confirmed_at.slice(5, 16).replace('T', ' ')) + ' ' + esc(f.confirmed_by) + '</span>' :
           '<div class="btn-row" style="flex-wrap:nowrap"><button class="btn btn-sm" type="button" data-fbok="' + i + '"' + (f.review === '부분제출' ? ' disabled title="부분 제출은 확인 대상이 아닙니다"' : '') + '>확인완료</button><input data-fbnote="' + i + '" placeholder="보완 사유" style="min-width:120px"><button class="btn-ghost btn-sm danger" type="button" data-fbfix="' + i + '">보완요청</button></div>') + '</td></tr>';
