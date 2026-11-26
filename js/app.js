@@ -5,7 +5,7 @@
   var esc = DB.esc;
   function $(id) { return document.getElementById(id); }
   var STATUS_FLOW = ['접수', '서류확인', '모집인코드확인', '배정대기', '배정완료'];
-  var CANCELABLE = ['접수', '서류확인', '모집인코드확인'];
+  var CANCELABLE = ['접수'];   // 서류확인이 시작되면 취소 불가 (서버 CANCELABLE 과 동일)
   var REGIONS = ['서울', '경기', '인천', '강원', '충북', '충남', '대전', '세종', '전북', '전남', '광주', '경북', '경남', '대구', '울산', '부산', '제주'];
   var USERS_ALLOWED = ['사용인번호', '이름', '본부', '사업단', '지점', '역할', '휴대폰번호', '휴대폰해시', '위촉상태', '사용여부', '연락처'];
   var FORBIDDEN_COLS = ['주민', '주소', '계좌', '고객명', '계약번호', '이메일', '생년월일', '급여', '수당'];
@@ -420,7 +420,7 @@
       else html += '<p class="sec-desc">이번 달 신청 내역이 없습니다.</p>';
       html += '<div class="btn-row"><button class="btn" type="button" data-open="신규"' + (hasNew ? ' disabled' : '') + '>신규 신청</button>' +
         '<button class="btn-ghost" type="button" data-open="제외"' + (hasEx ? ' disabled' : '') + '>제외 신청</button></div>' +
-        '<span class="helper">' + (hasNew ? '신규 신청은 이번 달 1건만 가능합니다. ' : '') + (hasEx ? '제외 신청이 이미 접수되어 있습니다. ' : '') + '접수·서류확인 단계까지는 취소할 수 있습니다.</span></div>';
+        '<span class="helper">' + (hasNew ? '신규 신청은 이번 달 1건만 가능합니다. ' : '') + (hasEx ? '제외 신청이 이미 접수되어 있습니다. ' : '') + '취소는 「접수」 상태(서류확인 시작 전)에서만 할 수 있습니다.</span></div>';
       if (S.applyFormType) html += '<hr class="rule">' + applyFormHtml(S.applyFormType, []);
       el.innerHTML = html;
       bindApplyForm(data);
@@ -443,7 +443,7 @@
         (t.full ? '<div class="note alert"><b>TO 가 모두 사용 중입니다</b>새 신청은 접수되지만 자리가 날 때까지 「배정 대기」로 승인될 수 있습니다. 제외 신청으로 자리를 비우면 순서대로 배정됩니다.</div>' : '') +
         '<details><summary class="helper" style="cursor:pointer">사용 중인 사용인 ' + t.used + '명 보기</summary><div class="chips" style="margin-top:6px">' + (t.used_list || []).map(function (u) { return '<span class="chip">' + esc(u.name) + (u.br ? ' · ' + esc(u.br) : '') + '</span>'; }).join('') + '</div></details></div><hr class="rule">';
     }
-    html += '<div class="sec"><h2 class="sec-title">' + esc(S.boot.scope) + ' 신청 진행상황</h2><p class="sec-desc">' + monthKo(data.month) + ' 배정분 · 범위 안의 사용인만 표시됩니다. 산하 사용인 대신 신규·제외 신청을 올리거나, 처리 전 신청을 취소할 수 있습니다.</p>' +
+    html += '<div class="sec"><h2 class="sec-title">' + esc(S.boot.scope) + ' 신청 진행상황</h2><p class="sec-desc">' + monthKo(data.month) + ' 배정분 · 범위 안의 사용인만 표시됩니다. 산하 사용인 대신 신규·제외 신청을 올리거나, 「접수」 상태(서류확인 전)인 신청을 취소할 수 있습니다.</p>' +
       '<div class="kpis"><div class="kpi accent"><span class="kpi-label">신규 신청</span><span class="kpi-value mono">' + cnt.nw + '<small>건</small></span></div>' +
       '<div class="kpi warn"><span class="kpi-label">제외 신청</span><span class="kpi-value mono">' + cnt.ex + '<small>건</small></span></div>' +
       '<div class="kpi"><span class="kpi-label">진행 중</span><span class="kpi-value mono">' + cnt.ing + '<small>건</small></span></div>' +
@@ -460,7 +460,7 @@
       html += '<td>' + (a.type === '제외' ? pillOf('제외 신청') : '<span class="pill info">신규</span>') + (a.by ? '<span class="cell-sub">대리 ' + esc(a.by) + '</span>' : '') + '</td><td class="mono">' + esc(a.date.slice(5)) + '</td><td>' + (a.type === '제외' ? '<span class="dash">—</span>' : esc(a.regions)) + '</td><td>' + pillOf(statusLabel(a)) + '</td><td class="why">' + (a.reason ? esc(a.reason) : '<span class="dash">—</span>') + '</td>' +
         '<td>' + (canCancel(a) ? '<button class="btn-ghost btn-sm danger" type="button" data-cancel="' + esc(a.id) + '">취소</button>' : '') + '</td></tr>';
     });
-    html += '</tbody></table></div><p class="helper">승인·반려·배정 처리는 실무자(어드민)가 합니다. 관리직은 산하 신청 올리기와 처리 전 취소까지만 할 수 있습니다.</p>';
+    html += '</tbody></table></div><p class="helper">승인·반려·배정 처리는 실무자(어드민)가 합니다. 관리직은 산하 신청 올리기와 「접수」 상태 취소까지만 할 수 있습니다.</p>';
     el.innerHTML = html;
     bindApplyForm(data);
     gateButtons(el, 'apply', '[data-open], #a-submit');
