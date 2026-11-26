@@ -935,9 +935,9 @@
         if (phone.length < 9) { toast('휴대폰번호를 다시 확인해 주세요. (숫자 9자리 이상)', 'stop'); inp.focus(); return; }
         if (!window.confirm((u.name || no) + ' (' + no + ') 의 휴대폰번호를\n' + inp.value.trim() + ' 로 바꿀까요?\n\n이후 로그인·신청서 제출은 이 번호로만 됩니다.')) return;
         var kw = q.value;
-        run(async function () { var r = await call('admin.setPhone', { no: no, phone: phone }); A._lastQ = kw; if (!r.changed) toast('기존 번호와 같아 바뀐 내용이 없습니다.', 'warn'); }, u.name + ' 휴대폰번호를 바꿨습니다.');
+        run(async function () { var r = await call('admin.setPhone', { no: no, phone: phone }); S.admUserQ = kw; if (!r.changed) toast('기존 번호와 같아 바뀐 내용이 없습니다.', 'warn'); }, u.name + ' 휴대폰번호를 바꿨습니다.');
       });
-      if (A._lastQ) { q.value = A._lastQ; A._lastQ = ''; renderUsers(); }
+      if (S.admUserQ) { q.value = S.admUserQ; S.admUserQ = ''; renderUsers(); }
     })();
 
     /* 설정 */
