@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/app.css?v=202611261405">
+<link rel="stylesheet" href="css/app.css?v=202611261553">
 <script>
 window.__diagLog = [];
 window.diag = function (m) {
@@ -52,6 +52,7 @@ setTimeout(function () { var l = document.getElementById('l-loading'); if (l && 
           <div class="stepcard"><div class="sc-head"><div class="sc-no">1</div><div><div class="sc-title">신청서 제출 <span class="helper">(로그인 없이)</span></div><div class="sc-desc">신청서 양식을 받아 작성한 뒤 촬영하거나 파일로 올립니다. GP 사용인번호 · 이름 · 휴대폰번호 · 희망지역(1~3순위)을 함께 입력합니다.</div></div></div></div>
           <div class="stepcard"><div class="sc-head"><div class="sc-no">2</div><div><div class="sc-title">확인 · 배정</div><div class="sc-desc">RP영업지원팀이 신청서를 확인하고 배정을 확정합니다. 진행 상태는 접수번호로 안내됩니다.</div></div></div></div>
           <div class="stepcard"><div class="sc-head"><div class="sc-no">3</div><div><div class="sc-title">로그인 후 배정 확인 · 피드백 제출</div><div class="sc-desc">배정이 확정되면 사용인번호 · 이름 · 휴대폰번호로 로그인해 배정 결과를 확인하고 컨택 피드백을 제출합니다.</div></div></div></div>
+          <div id="p-window" class="note info" style="margin-bottom:10px" hidden></div>
           <div class="btn-row"><button class="btn secondary" type="button" id="p-open">📝 신청서 제출하기 <small style="font-weight:normal;opacity:.85">· 처음 신청 · 로그인 불필요</small></button></div>
         </div>
 
@@ -179,8 +180,8 @@ setTimeout(function () { var l = document.getElementById('l-loading'); if (l && 
 <input type="file" id="adm-input" accept=".xlsx,.xls,.csv,.pdf,.doc,.docx,.hwp,.hwpx,.png,.jpg,.jpeg" hidden>
 
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" onerror="diagShow('엑셀 라이브러리(cdnjs) 로드 실패')"></script>
-<script src="js/api.js?v=202611261405" onerror="diagShow('api.js 로드 실패')"></script>
-<script src="js/app.js?v=202611261405" onerror="diagShow('app.js 로드 실패')"></script>
+<script src="js/api.js?v=202611261553" onerror="diagShow('api.js 로드 실패')"></script>
+<script src="js/app.js?v=202611261553" onerror="diagShow('app.js 로드 실패')"></script>
 <script>diag("스크립트 로드 완료 (api.js " + (window.DB && DB.api ? "OK" : "없음") + ")");</script>
 </body>
 </html>

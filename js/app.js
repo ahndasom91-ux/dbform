@@ -28,6 +28,23 @@
     return '<span class="pill ' + (m[status] || 'neutral') + '">' + esc(status) + '</span>';
   }
   function monthKo(m) { return m ? m.slice(0, 4) + '년 ' + parseInt(m.slice(5), 10) + '월' : ''; }
+  /* ── 접수 기간 (서버 config apply_open·apply_close·feedback_open·feedback_close · public.info.windows / me.bootstrap.config.windows) ── */
+  function dateKo(ymd) { var m = String(ymd || '').match(/^(\d{4})-(\d{2})-(\d{2})$/); if (!m) return String(ymd || ''); var d = new Date(+m[1], +m[2] - 1, +m[3]); return parseInt(m[2], 10) + '월 ' + parseInt(m[3], 10) + '일(' + '일월화수목금토'[d.getDay()] + ')'; }
+  function windowOf(kind) { var w = (S.boot && S.boot.config && S.boot.config.windows) || (P.info && P.info.windows) || {}; return w[kind] || { state: 'always', is_open: true }; }
+  function windowLabel(w) { if (!w || w.state === 'always') return '상시 접수'; if (w.open && w.close) return dateKo(w.open) + ' ~ ' + dateKo(w.close); if (w.open) return dateKo(w.open) + '부터'; return dateKo(w.close) + '까지'; }
+  /** 접수 기간 안내 HTML. 열려 있고 기간이 없으면 빈 문자열. */
+  function windowNoteHtml(kind) {
+    var w = windowOf(kind), what = kind === 'apply' ? '신청서' : '피드백';
+    if (w.state === 'always') return '';
+    if (w.is_open) return '<div class="note info"><b>' + what + ' 접수 중</b>접수 기간: ' + esc(windowLabel(w)) + (w.close ? ' · ' + esc(dateKo(w.close)) + ' 23:59 마감' : '') + '</div>';
+    if (w.state === 'before') return '<div class="note alert"><b>' + what + ' 접수 기간이 아닙니다</b>' + esc(dateKo(w.open)) + '부터 접수합니다. (접수 기간: ' + esc(windowLabel(w)) + ')</div>';
+    return '<div class="note alert"><b>' + what + ' 접수가 마감되었습니다</b>' + esc(dateKo(w.close)) + ' 마감 · 접수 기간: ' + esc(windowLabel(w)) + ' · 문의: RP영업지원팀 안다솜 과장</div>';
+  }
+  /** 기간 밖이면 컨테이너 안의 버튼들을 비활성화 */
+  function gateButtons(root, kind, selector) {
+    var w = windowOf(kind); if (w.is_open) return;
+    root.querySelectorAll(selector).forEach(function (b) { b.disabled = true; b.title = (kind === 'apply' ? '신청서' : '피드백') + ' 접수 기간이 아닙니다 (' + windowLabel(w) + ')'; });
+  }
   function fmtBytes(b) { return b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.round(b / 1024) + ' KB'; }
   function loadingHtml(msg) { return '<div class="loading"><div class="spinner"></div><span>' + esc(msg || '불러오는 중…') + '</span></div>'; }
   function errorHtml(e) { return '<div class="err">' + esc(e && e.message || e) + '</div>'; }
@@ -66,6 +83,7 @@
     try {
       var info = await DB.api('public.info');
       P.info = info;
+      renderPublicWindow();
       $('p-r1').innerHTML = publicRegionOptions(false); $('p-r2').innerHTML = publicRegionOptions(true); $('p-r3').innerHTML = publicRegionOptions(true);
       P.hqs = info.hqs_all || info.hqs || [];
       var fid = (String(info.form_url || '').match(/\/d\/([^\/]+)/) || [])[1] || '';
@@ -134,10 +152,18 @@
   }
 
   /* ───────── 로그인 전 신청서 제출 ───────── */
+  function renderPublicWindow() {
+    var box = $('p-window'); if (!box) return;
+    var w = windowOf('apply');
+    var html = windowNoteHtml('apply');
+    box.innerHTML = html; box.hidden = !html; box.className = '';   // note 클래스는 안쪽 div 가 가짐
+    if (!w.is_open) { var b = $('p-open'); b.disabled = true; b.innerHTML = '📝 신청서 제출하기 <small style="font-weight:normal;opacity:.85">· 접수 기간이 아닙니다</small>'; }
+  }
   function publicReady() {
-    var ok = ['p-no', 'p-name', 'p-hq', 'p-phone', 'p-r1'].every(function (id) { return $(id).value.trim() !== ''; }) && !!P.file;
+    var w = windowOf('apply');
+    var ok = ['p-no', 'p-name', 'p-hq', 'p-phone', 'p-r1'].every(function (id) { return $(id).value.trim() !== ''; }) && !!P.file && w.is_open;
     $('p-submit').disabled = !ok;
-    var hint = $('p-ready-hint'); if (hint) hint.textContent = ok ? '제출할 준비가 되었습니다.' : '필수 항목과 신청서 파일을 모두 채우면 버튼이 초록색으로 바뀝니다.';
+    var hint = $('p-ready-hint'); if (hint) hint.textContent = !w.is_open ? '신청서 접수 기간이 아닙니다 (' + windowLabel(w) + ').' : ok ? '제출할 준비가 되었습니다.' : '필수 항목과 신청서 파일을 모두 채우면 버튼이 초록색으로 바뀝니다.';
     return ok;
   }
   ['p-no', 'p-name', 'p-hq', 'p-phone', 'p-r1'].forEach(function (id) { $(id).addEventListener('input', publicReady); $(id).addEventListener('change', publicReady); });
@@ -382,7 +408,7 @@
     el.innerHTML = loadingHtml();
     var data;
     try { data = await call('apply.list'); } catch (e) { el.innerHTML = errorHtml(e); return; }
-    var html = cautionHtml('유의사항', S.boot.notices.main);
+    var html = cautionHtml('유의사항', S.boot.notices.main) + windowNoteHtml('apply');
     var apps = data.applications;
 
     if (!isManager()) {
@@ -398,6 +424,7 @@
       if (S.applyFormType) html += '<hr class="rule">' + applyFormHtml(S.applyFormType, []);
       el.innerHTML = html;
       bindApplyForm(data);
+      gateButtons(el, 'apply', '[data-open], #a-submit');
       return;
     }
 
@@ -436,6 +463,7 @@
     html += '</tbody></table></div><p class="helper">승인·반려·배정 처리는 실무자(어드민)가 합니다. 관리직은 산하 신청 올리기와 처리 전 취소까지만 할 수 있습니다.</p>';
     el.innerHTML = html;
     bindApplyForm(data);
+    gateButtons(el, 'apply', '[data-open], #a-submit');
   }
 
   function bindApplyForm(data) {
@@ -571,6 +599,8 @@
         '<div class="upload-box"><button class="upload-btn" type="button" id="f-pick"' + (canUploadM ? '' : ' disabled') + '>📊 피드백 엑셀 선택<small>' + (canUploadM ? '검사 통과한 사람 분만 제출됩니다' : '이번 달 배정된 사용인이 없습니다') + '</small></button></div>' +
         '<div id="f-checks"></div><div class="btn-row" id="f-actions" hidden><button class="btn" type="button" id="f-submit">검사 통과 · 제출하기</button></div></div>';
       el.innerHTML = h;
+      if (windowNoteHtml('feedback')) el.insertAdjacentHTML('afterbegin', windowNoteHtml('feedback'));
+      gateButtons(el, 'feedback', '#f-pick, #f-submit');
       $('f-pick').addEventListener('click', function () { $('fb-input').value = ''; $('fb-input').click(); });
       $('f-submit').addEventListener('click', submitFeedback);
       return;
@@ -613,6 +643,8 @@
     } else h2 += '<p class="sec-desc">아직 제출한 파일이 없습니다.</p>';
     h2 += '<p class="helper">같은 배정월에 다시 올리면 버전이 올라가고, 마지막 파일이 유효합니다.</p></div>';
     el.innerHTML = h2;
+    if (windowNoteHtml('feedback')) el.insertAdjacentHTML('afterbegin', windowNoteHtml('feedback'));
+    gateButtons(el, 'feedback', '#f-pick, #f-submit');
 
     var rs = $('f-resend'); if (rs) rs.addEventListener('click', async function () { try { await call('apply.requestResend'); toast('재발송을 요청했습니다. 실무자에게 전달됩니다.', 'ok'); renderFeed(); } catch (e) { toast(e.message, 'stop'); } });
     $('f-pick').addEventListener('click', function () { $('fb-input').value = ''; $('fb-input').click(); });
@@ -878,6 +910,10 @@
       '<div class="row3"><div class="field"><label for="c-to">본부 TO 기본값 (명)</label><input id="c-to" class="mono" inputmode="numeric" value="' + esc(A.cfg.hq_to_default || '10') + '"></div>' +
       '<div class="field"><label for="c-torules">본부별 TO 예외 (본부명=수, 쉼표)</label><input id="c-torules" value="' + esc(A.cfg.hq_to_rules || '') + '" placeholder="예: 리치본부=12"></div>' +
       '<div class="field"><label for="c-hqlist">본부 드롭다운에 추가할 본부명 (쉼표)</label><input id="c-hqlist" value="' + esc(A.cfg.hq_list || '') + '" placeholder="명단에 없는 본부를 미리 등록"></div></div>' +
+      '<b style="font-size:12.5px;display:block;margin-top:6px">접수 기간 <span class="helper">(비우면 상시 접수 · 시작일 00:00 ~ 종료일 23:59 · 사이트 화면과 서버 모두에서 기간 밖 제출을 막습니다)</span></b>' +
+      '<div class="row2"><div class="field"><label for="c-aopen">신청서 접수 시작</label><input id="c-aopen" type="date" value="' + esc(A.cfg.apply_open || '') + '"></div><div class="field"><label for="c-aclose">신청서 접수 종료</label><input id="c-aclose" type="date" value="' + esc(A.cfg.apply_close || '') + '"></div></div>' +
+      '<div class="row2"><div class="field"><label for="c-fopen">피드백 접수 시작</label><input id="c-fopen" type="date" value="' + esc(A.cfg.feedback_open || '') + '"></div><div class="field"><label for="c-fclose">피드백 접수 종료</label><input id="c-fclose" type="date" value="' + esc(A.cfg.feedback_close || '') + '"></div></div>' +
+      '<p class="helper" style="margin:0">지금 상태 — 신청서: ' + esc(windowLabel(((A.cfg.windows || {}).apply) || windowOf('apply'))) + ' · 피드백: ' + esc(windowLabel(((A.cfg.windows || {}).feedback) || windowOf('feedback'))) + '</p>' +
       '<div class="field"><label for="c-pw">관리자 비밀번호 변경 (8자 이상, 비우면 유지)</label><input id="c-pw" type="password" autocomplete="new-password"></div>' +
       '<div class="field"><label for="c-results">컨택결과 허용값 (쉼표 구분)</label><input id="c-results" value="' + esc(A.cfg.feedback_results || '') + '"></div>' +
       '<div class="field"><label for="c-headers">피드백 열 제목 (쉼표 구분 · 순서 포함)</label><input id="c-headers" value="' + esc(A.cfg.feedback_headers || '') + '"></div>' +
@@ -981,7 +1017,8 @@
     $('c-save').addEventListener('click', function () {
       var set = { form_file_id: $('c-form').value.trim(), feedback_results: $('c-results').value.trim(), feedback_headers: $('c-headers').value.trim(),
                   regions: $('c-regions').value.trim(), apply_qty_default: $('c-qty').value.trim(), apply_qty_rules: $('c-qtyrules').value.trim(),
-                  hq_to_default: $('c-to').value.trim(), hq_to_rules: $('c-torules').value.trim(), hq_list: $('c-hqlist').value.trim() };
+                  hq_to_default: $('c-to').value.trim(), hq_to_rules: $('c-torules').value.trim(), hq_list: $('c-hqlist').value.trim(),
+                  apply_open: $('c-aopen').value.trim(), apply_close: $('c-aclose').value.trim(), feedback_open: $('c-fopen').value.trim(), feedback_close: $('c-fclose').value.trim() };
       var pw = $('c-pw').value.trim(); if (pw) set.admin_password = pw;
       run(async function () { await call('admin.config', { set: set }); S.boot = await call('me.bootstrap'); }, '설정을 저장했습니다.');
     });
