@@ -7,7 +7,7 @@
   var STATUS_FLOW = ['접수', '서류확인', '모집인코드확인', '배정대기', '배정완료'];
   var CANCELABLE = ['접수', '서류확인', '모집인코드확인'];
   var REGIONS = ['서울', '경기', '인천', '강원', '충북', '충남', '대전', '세종', '전북', '전남', '광주', '경북', '경남', '대구', '울산', '부산', '제주'];
-  var USERS_ALLOWED = ['사용인번호', '이름', '본부', '사업단', '지점', '역할', '휴대폰번호', '휴대폰해시', '위촉상태', '사용여부'];
+  var USERS_ALLOWED = ['사용인번호', '이름', '본부', '사업단', '지점', '역할', '휴대폰번호', '휴대폰해시', '위촉상태', '사용여부', '연락처'];
   var FORBIDDEN_COLS = ['주민', '주소', '계좌', '고객명', '계약번호', '이메일', '생년월일', '급여', '수당'];
 
   var S = { me: null, boot: null, pendingFile: null, applyFormType: null, fbValidation: null, feed: null, statMonth: '' };
@@ -312,15 +312,25 @@
   }
 
   /* ───────── 관리자 신청 탭 = 신청 접수함 ───────── */
+  /** 신청자의 관리자(본부장) 이름·연락처 셀. 같은 사업단·지점의 장이 있으면 아래에 작게 함께 표시. */
+  function mgrCell(hq, unit, br) {
+    var list = (A.mgrs && A.mgrs[hq]) || [];
+    if (!list.length) return '<span class="helper" style="color:var(--warn)">본부장 미등록</span>';
+    function one(m) { return esc(m.role) + ' ' + esc(m.name) + (m.contact ? ' · <a class="link mono" href="tel:' + esc(m.contact.replace(/-/g, '')) + '">' + esc(m.contact) + '</a>' : ' <span class="helper">(연락처 없음)</span>'); }
+    var heads = list.filter(function (m) { return m.role === '본부장'; });
+    var subs = list.filter(function (m) { return m.role !== '본부장' && ((unit && m.unit === unit) || (br && m.br === br)); });
+    if (!heads.length) heads = list.slice(0, 1);
+    return heads.map(function (m) { return '<div>' + one(m) + '</div>'; }).join('') + subs.map(function (m) { return '<div class="cell-sub">' + one(m) + '</div>'; }).join('');
+  }
   function inboxHtml() {
     var h = '<div class="sec"><h2 class="sec-title">신청 접수함</h2><p class="sec-desc">신청서 파일을 열어 확인하고 상태를 바꿉니다. 여러 건을 체크해 한 번에 처리하거나, 파이썬 5번 결과 파일을 올려 일괄 반영할 수 있습니다.</p>' +
       '<div class="bulkbar"><span>선택 <span class="cnt" id="b-cnt">0</span>건</span><select id="b-status"><option value="">상태 선택</option>' + STATUS_FLOW.slice(1).concat(['반려']).map(function (s) { return '<option>' + s + '</option>'; }).join('') + '</select>' +
       '<input id="b-reason" placeholder="사유 (선택)" style="flex:1;min-width:140px"><button class="btn-ghost btn-sm" type="button" id="b-reason-to" title="사유 칸에 TO 초과 문구를 넣습니다">TO 초과 사유</button><button class="btn btn-sm" type="button" id="b-apply">선택 건 일괄 변경</button>' +
       '<button class="btn-ghost btn-sm" type="button" data-up="allocations">배정 결과 파일로 일괄 반영</button><button class="btn-ghost btn-sm" type="button" id="b-sample">결과 파일 샘플</button></div>' +
-      '<div class="table-wrap"><table><thead><tr><th><input type="checkbox" id="b-all"></th><th>접수번호</th><th>신청자</th><th>희망지역</th><th>신청서</th><th>상태</th><th>사유</th></tr></thead><tbody>';
-    if (!A.apps.length) h += '<tr><td colspan="7" class="dash">이번 달 신청이 없습니다.</td></tr>';
+      '<div class="table-wrap"><table><thead><tr><th><input type="checkbox" id="b-all"></th><th>접수번호</th><th>신청자</th><th>관리자 (본부장)</th><th>희망지역</th><th>신청서</th><th>상태</th><th>사유</th></tr></thead><tbody>';
+    if (!A.apps.length) h += '<tr><td colspan="8" class="dash">이번 달 신청이 없습니다.</td></tr>';
     A.apps.forEach(function (a, i) {
-      h += '<tr><td><input type="checkbox" data-sel="' + i + '"></td><td class="mono">' + esc(a.id.slice(3)) + (a.resend ? '<span class="cell-sub" style="color:var(--warn)">재발송 요청</span>' : '') + '</td><td class="name">' + esc(a.name) + (a.type === '제외' ? ' ' + pillOf('제외 신청') : '') + '<span class="cell-sub">' + esc([a.hq, a.br].filter(Boolean).join(' · ')) + (a.by ? ' · 대리 ' + esc(a.by) : '') + (function () { var t = A.toByHq && A.toByHq[a.hq]; return t ? ' · <span style="color:' + (t.full ? 'var(--stop)' : 'var(--sub)') + '">TO ' + t.used + '/' + t.limit + (t.full ? ' 초과' : '') + '</span>' : ''; })() + '</span></td><td>' + (a.type === '제외' ? '<span class="dash">—</span>' : esc(a.regions) + ' · ' + a.qty) + '</td>' +
+      h += '<tr><td><input type="checkbox" data-sel="' + i + '"></td><td class="mono">' + esc(a.id.slice(3)) + (a.resend ? '<span class="cell-sub" style="color:var(--warn)">재발송 요청</span>' : '') + '</td><td class="name">' + esc(a.name) + (a.type === '제외' ? ' ' + pillOf('제외 신청') : '') + '<span class="cell-sub">' + esc([a.hq, a.br].filter(Boolean).join(' · ')) + (a.by ? ' · 대리 ' + esc(a.by) : '') + (function () { var t = A.toByHq && A.toByHq[a.hq]; return t ? ' · <span style="color:' + (t.full ? 'var(--stop)' : 'var(--sub)') + '">TO ' + t.used + '/' + t.limit + (t.full ? ' 초과' : '') + '</span>' : ''; })() + '</span></td><td>' + mgrCell(a.hq, a.unit, a.br) + '</td><td>' + (a.type === '제외' ? '<span class="dash">—</span>' : esc(a.regions) + ' · ' + a.qty) + '</td>' +
         '<td><a class="link thumb-hover" data-thumb="' + esc((String(a.file_url || '').match(/\/d\/([^\/]+)/) || [])[1] || '') + '" href="' + esc(a.file_url) + '" target="_blank" rel="noopener">열기</a></td>' +
         '<td><select data-app="' + i + '">' + STATUS_FLOW.concat(['반려']).map(function (s) { return '<option' + (s === a.status ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></td>' +
         '<td><input data-reason="' + i + '" value="' + esc(a.reason) + '" placeholder="사유 · 메모" style="min-width:160px"></td></tr>';
@@ -333,7 +343,7 @@
     el.innerHTML = loadingHtml('접수함을 불러오는 중…');
     try {
       var r = await Promise.all([call('admin.applications'), call('admin.config')]);
-      A.apps = r[0].applications; A.month = r[0].month; A.toByHq = r[0].to_by_hq || {}; A.cfg = r[1].config;
+      A.apps = r[0].applications; A.month = r[0].month; A.toByHq = r[0].to_by_hq || {}; A.mgrs = r[0].managers_by_hq || {}; A.cfg = r[1].config;
     } catch (e) { el.innerHTML = errorHtml(e); return; }
     el.innerHTML = inboxHtml() + '<div id="apply-checks"></div>';
     var busy = false;
@@ -790,7 +800,7 @@
     el.innerHTML = loadingHtml('관리 데이터를 불러오는 중…');
     try {
       var r = await Promise.all([call('admin.applications'), call('admin.feedbacks'), call('admin.pipeline'), call('admin.mail'), call('admin.config'), call('admin.logs', { limit: 40 }), call('admin.users')]);
-      A = { apps: r[0].applications, month: r[0].month, toByHq: r[0].to_by_hq || {}, fbs: r[1].rows, steps: r[2].steps, mails: r[3].mails, cfg: r[4].config, logs: r[5].rows, users: r[6].users || [] };
+      A = { apps: r[0].applications, month: r[0].month, toByHq: r[0].to_by_hq || {}, mgrs: r[0].managers_by_hq || {}, fbs: r[1].rows, steps: r[2].steps, mails: r[3].mails, cfg: r[4].config, logs: r[5].rows, users: r[6].users || [] };
     } catch (e) { el.innerHTML = errorHtml(e); return; }
     var h = '';
 
@@ -814,7 +824,7 @@
         '<div class="btn-row"><input data-sum="' + p.step + '" placeholder="요약 (예: jis 1,284건)" value="' + esc(p.summary) + '" style="flex:1;min-width:100px"><button class="btn-ghost btn-sm" type="button" data-toggle="' + p.step + '" data-done="' + (p.done ? 1 : 0) + '">' + (p.done ? '완료 해제' : '완료 처리') + '</button></div></div>';
     });
     h += '</div><div class="boundary"><div class="bx local"><b>실무자 PC 에만 두는 것</b><ul><li>인사정보 원본 (주민번호 · 주소 · 계좌)</li><li>DW 추출본 · 필터링 결과 · 배정 결과(고객 계약정보)</li><li>배정본 xlsx (메일 발송용)</li></ul></div>' +
-      '<div class="bx site"><b>사이트에 올라가는 것</b><ul><li>배정자 마스터: 사용인번호 · 이름 · 본부 · 사업단 · 지점 · 역할 · 휴대폰번호(서버가 즉시 해시로 변환) · 위촉상태 · 보험사코드_*</li><li>배정 결과 요약: 사용인번호 · 배정건수 · 상태 · 미배정사유</li><li>지역별 효율 요약: 지역 · 추출계약수 · 추출고객수 · 배정계약수 · 배정고객수</li></ul></div></div><div id="adm-checks"></div></div><hr class="rule">';
+      '<div class="bx site"><b>사이트에 올라가는 것</b><ul><li>배정자 마스터: 사용인번호 · 이름 · 본부 · 사업단 · 지점 · 역할 · 휴대폰번호(서버가 즉시 해시로 변환) · 위촉상태 · 보험사코드_* · 연락처(관리직만 원문 보관 · 접수함 표시용)</li><li>배정 결과 요약: 사용인번호 · 배정건수 · 상태 · 미배정사유</li><li>지역별 효율 요약: 지역 · 추출계약수 · 추출고객수 · 배정계약수 · 배정고객수</li></ul></div></div><div id="adm-checks"></div></div><hr class="rule">';
 
     /* 피드백 검토함 */
     var waiting = A.fbs.filter(function (f) { return f.review === '검토중'; }).length;
@@ -823,7 +833,7 @@
       '<div class="table-wrap"><table><thead><tr><th>사용인</th><th style="text-align:right">배정</th><th style="text-align:right">기재</th><th>최근 제출</th><th>파일</th><th>상태</th><th>처리</th></tr></thead><tbody>';
     if (!A.fbs.length) h += '<tr><td colspan="7" class="dash">제출된 피드백이 없습니다.</td></tr>';
     A.fbs.forEach(function (f, i) {
-      h += '<tr><td class="name">' + esc(f.name) + '<span class="cell-sub">' + esc([f.hq, f.br].filter(Boolean).join(' · ')) + '</span></td><td class="num mono">' + f.count + '</td><td class="num mono">' + f.filled + '</td><td class="mono">' + esc(f.at.slice(5, 16).replace('T', ' ')) + '<span class="cell-sub">v' + f.ver + (f.by ? ' · ' + esc(f.by) : '') + '</span></td>' +
+      h += '<tr><td class="name">' + esc(f.name) + '<span class="cell-sub">' + esc([f.hq, f.br].filter(Boolean).join(' · ')) + '</span>' + (function () { var m = ((A.mgrs || {})[f.hq] || []).filter(function (x) { return x.role === '본부장'; })[0]; return m ? '<span class="cell-sub">본부장 ' + esc(m.name) + (m.contact ? ' · ' + esc(m.contact) : '') + '</span>' : ''; })() + '</td><td class="num mono">' + f.count + '</td><td class="num mono">' + f.filled + '</td><td class="mono">' + esc(f.at.slice(5, 16).replace('T', ' ')) + '<span class="cell-sub">v' + f.ver + (f.by ? ' · ' + esc(f.by) : '') + '</span></td>' +
         '<td><a class="link thumb-hover" data-thumb="' + esc((String(f.file_url || '').match(/\/d\/([^\/]+)/) || [])[1] || '') + '" href="' + esc(f.file_url) + '" target="_blank" rel="noopener">열기</a></td><td>' + pillOf(f.review) + (f.note ? '<span class="cell-sub">' + esc(f.note) + '</span>' : '') + '</td>' +
         '<td>' + (f.review === '제출완료' ? '<span class="helper">확인 ' + esc(f.confirmed_at.slice(5, 16).replace('T', ' ')) + ' ' + esc(f.confirmed_by) + '</span>' :
           '<div class="btn-row" style="flex-wrap:nowrap"><button class="btn btn-sm" type="button" data-fbok="' + i + '"' + (f.review === '부분제출' ? ' disabled title="부분 제출은 확인 대상이 아닙니다"' : '') + '>확인완료</button><input data-fbnote="' + i + '" placeholder="보완 사유" style="min-width:120px"><button class="btn-ghost btn-sm danger" type="button" data-fbfix="' + i + '">보완요청</button></div>') + '</td></tr>';
@@ -944,7 +954,7 @@
         body.innerHTML = hit.slice(0, 30).map(function (u) {
           return '<tr><td class="mono">' + esc(u.no) + '</td><td class="name">' + esc(u.name) + '</td><td>' + esc([u.hq, u.unit, u.br].filter(Boolean).join(' · ')) + '</td>' +
             '<td>' + esc(u.role) + (u.status ? ' · ' + esc(u.status) : '') + (u.active ? '' : ' <span class="helper" style="color:var(--warn)">사용 N</span>') + '</td>' +
-            '<td>' + (u.has_phone ? pillOf('등록됨') : '<span class="dash">없음</span>') + '</td>' +
+            '<td>' + (u.has_phone ? pillOf('등록됨') : '<span class="dash">없음</span>') + (u.contact ? '<span class="cell-sub mono">' + esc(u.contact) + '</span>' : '') + '</td>' +
             '<td><input data-phone="' + esc(u.no) + '" inputmode="tel" placeholder="010-0000-0000" style="min-width:140px" autocomplete="off"></td>' +
             '<td><button class="btn btn-sm" type="button" data-setphone="' + esc(u.no) + '">변경</button></td></tr>';
         }).join('') || '<tr><td colspan="7" class="dash">일치하는 사용인이 없습니다.</td></tr>';
