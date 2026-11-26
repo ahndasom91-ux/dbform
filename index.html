@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/app.css?v=202611250905">
+<link rel="stylesheet" href="css/app.css?v=202611260904">
 <script>
 window.__diagLog = [];
 window.diag = function (m) {
@@ -68,7 +68,7 @@ setTimeout(function () { var l = document.getElementById('l-loading'); if (l && 
                 <div class="field"><label for="p-name">이름 <span class="req">*</span></label><input id="p-name" placeholder="홍길동" autocomplete="off"></div>
               </div>
               <div class="row2">
-                <div class="field"><label for="p-hq">본부 <span class="req">*</span></label><input id="p-hq" placeholder="예: 리치본부" autocomplete="off"></div>
+                <div class="field"><label for="p-hq">본부 <span class="req">*</span></label><input id="p-hq" list="hq-list" placeholder="본부명 입력 또는 선택 (예: 리치본부)" autocomplete="off"><datalist id="hq-list"></datalist><span class="helper" id="p-to"></span></div>
                 <div class="field"><label for="p-br">지점</label><input id="p-br" placeholder="예: 리치직할지점" autocomplete="off"></div>
               </div>
               <div class="field"><label for="p-phone">휴대폰번호 <span class="req">*</span></label><input id="p-phone" class="mono" inputmode="numeric" placeholder="010-0000-0000" autocomplete="off">
@@ -179,8 +179,8 @@ setTimeout(function () { var l = document.getElementById('l-loading'); if (l && 
 <input type="file" id="adm-input" accept=".xlsx,.xls,.csv,.pdf,.doc,.docx,.hwp,.hwpx,.png,.jpg,.jpeg" hidden>
 
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" onerror="diagShow('엑셀 라이브러리(cdnjs) 로드 실패')"></script>
-<script src="js/api.js?v=202611250905" onerror="diagShow('api.js 로드 실패')"></script>
-<script src="js/app.js?v=202611250905" onerror="diagShow('app.js 로드 실패')"></script>
+<script src="js/api.js?v=202611260904" onerror="diagShow('api.js 로드 실패')"></script>
+<script src="js/app.js?v=202611260904" onerror="diagShow('app.js 로드 실패')"></script>
 <script>diag("스크립트 로드 완료 (api.js " + (window.DB && DB.api ? "OK" : "없음") + ")");</script>
 </body>
 </html>

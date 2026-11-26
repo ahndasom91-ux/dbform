@@ -67,6 +67,7 @@
       var info = await DB.api('public.info');
       P.info = info;
       $('p-r1').innerHTML = publicRegionOptions(false); $('p-r2').innerHTML = publicRegionOptions(true); $('p-r3').innerHTML = publicRegionOptions(true);
+      $('hq-list').innerHTML = (info.hqs_all || info.hqs || []).map(function (x) { return '<option value="' + esc(x) + '">'; }).join('');
       var fid = (String(info.form_url || '').match(/\/d\/([^\/]+)/) || [])[1] || '';
       $('p-formlink').innerHTML = fid
         ? '<a class="btn-ghost" href="' + esc(info.form_url) + '" target="_blank" rel="noopener" style="text-align:center;text-decoration:none">양식 열기</a>' +
@@ -140,6 +141,20 @@
     return ok;
   }
   ['p-no', 'p-name', 'p-hq', 'p-phone', 'p-r1'].forEach(function (id) { $(id).addEventListener('input', publicReady); $(id).addEventListener('change', publicReady); });
+  // 본부 TO 안내 (본부 입력이 멈추면 조회)
+  P.to = null;
+  var toTimer = null;
+  function toText(t) { return esc(t.hq) + ' TO ' + t.used + ' / ' + t.limit + '명 사용 중' + (t.waiting ? ' · 접수 대기 ' + t.waiting + '명' : '') + (t.full ? ' · <b style="color:var(--stop)">TO 가 모두 사용 중입니다</b>' : ''); }
+  async function refreshPublicTo() {
+    var hq = $('p-hq').value.trim(), el = $('p-to');
+    P.to = null; el.innerHTML = '';
+    if (!hq) return;
+    try { var t = await DB.api('public.hqTo', { hq: hq }); if ($('p-hq').value.trim() !== hq) return; P.to = t; el.innerHTML = toText(t); }
+    catch (e) { el.textContent = ''; }
+  }
+  $('p-hq').addEventListener('input', function () { clearTimeout(toTimer); toTimer = setTimeout(refreshPublicTo, 500); });
+  $('p-hq').addEventListener('change', function () { clearTimeout(toTimer); refreshPublicTo(); });
+  function toAlertText(t) { return '현재 ' + t.hq + ' 본부 TO(' + t.limit + '명)를 모두 사용 중입니다.\n(사용 중 ' + t.used + '명' + (t.waiting ? ' · 접수 대기 ' + t.waiting + '명' : '') + ')\n\n접수는 되지만 자리가 날 때까지 「배정 대기」 상태로 승인될 수 있습니다.\n계속 제출할까요?'; }
   $('p-open').addEventListener('click', function () { $('p-form').hidden = false; $('p-done').hidden = true; $('p-form').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   $('p-close').addEventListener('click', function () { $('p-form').hidden = true; P.file = null; $('p-filechip').innerHTML = ''; publicReady(); });
   $('p-cam').addEventListener('click', function () { $('cam-input').dataset.target = 'public'; $('cam-input').value = ''; $('cam-input').click(); });
@@ -169,6 +184,8 @@
     var dup = regions.filter(function (r, i) { return regions.indexOf(r) !== i; });
     if (dup.length) { err.textContent = '같은 지역을 두 번 선택했습니다: ' + dup[0]; err.hidden = false; return; }
     if (!P.file) { err.textContent = '작성한 신청서를 촬영하거나 첨부해 주세요.'; err.hidden = false; return; }
+    if (!P.to || P.to.hq !== hq) { try { P.to = await DB.api('public.hqTo', { hq: hq }); } catch (e) { P.to = null; } }
+    if (P.to && P.to.full && !window.confirm(toAlertText(P.to))) return;
     if (!(await confirmNotices())) return;
     var btn = $('p-submit'); btn.disabled = true; btn.textContent = '업로드 중…';
     try {
@@ -177,7 +194,7 @@
       P.file = null; $('p-filechip').innerHTML = '';
       var done = $('p-done'); done.hidden = false;
       done.innerHTML = '<div class="result-top"><div class="result-who">' + esc(r.name) + ' 님 신청 접수 <span>· ' + esc(monthKo(r.month)) + '</span></div>' + pillOf('접수') + '</div>' +
-        '<div class="kv"><div class="kv-row"><dt>접수번호</dt><dd class="mono">' + esc(r.id) + '</dd></div><div class="kv-row"><dt>다음</dt><dd>RP영업지원팀이 신청서를 확인하고 배정을 확정합니다. 확정되면 위 사용인번호 · 이름 · 휴대폰번호로 로그인해 배정 결과를 볼 수 있습니다.</dd></div></div>';
+        '<div class="kv"><div class="kv-row"><dt>접수번호</dt><dd class="mono">' + esc(r.id) + '</dd></div>' + (r.reason ? '<div class="kv-row"><dt>안내</dt><dd style="color:var(--stop)">' + esc(r.reason) + ' — 본부 TO 가 차 있어 자리가 나면 순서대로 배정됩니다.</dd></div>' : '') + '<div class="kv-row"><dt>다음</dt><dd>RP영업지원팀이 신청서를 확인하고 배정을 확정합니다. 확정되면 위 사용인번호 · 이름 · 휴대폰번호로 로그인해 배정 결과를 볼 수 있습니다.</dd></div></div>';
       done.scrollIntoView({ behavior: 'smooth', block: 'center' });
       toast('접수되었습니다. 접수번호 ' + r.id, 'ok');
       ['p-no', 'p-name', 'p-hq', 'p-br', 'p-phone'].forEach(function (id) { $(id).value = ''; });
@@ -297,6 +314,16 @@
     users.forEach(function (u) { var as = apps.filter(function (a) { return a.no === u.no; }); if (!as.length) rows.push({ u: u, a: null }); as.forEach(function (a) { rows.push({ u: u, a: a }); }); });
     var cnt = { nw: 0, ex: 0, ing: 0, done: 0 };
     apps.forEach(function (a) { if (a.type === '제외') cnt.ex++; else cnt.nw++; if (a.status === '배정완료') cnt.done++; else if (a.status !== '반려') cnt.ing++; });
+    S.hqTo = data.to || null;
+    if (data.to) {
+      var t = data.to;
+      html += '<div class="sec"><h2 class="sec-title">' + esc(t.hq) + ' TO 사용 현황</h2>' +
+        '<div class="kpis"><div class="kpi ' + (t.full ? 'warn' : 'accent') + '"><span class="kpi-label">TO 사용</span><span class="kpi-value mono">' + t.used + '<small>/ ' + t.limit + '명</small></span></div>' +
+        '<div class="kpi"><span class="kpi-label">남은 자리</span><span class="kpi-value mono">' + Math.max(0, t.limit - t.used) + '<small>명</small></span></div>' +
+        '<div class="kpi"><span class="kpi-label">접수 대기</span><span class="kpi-value mono">' + t.waiting + '<small>명</small></span></div></div>' +
+        (t.full ? '<div class="note alert"><b>TO 가 모두 사용 중입니다</b>새 신청은 접수되지만 자리가 날 때까지 「배정 대기」로 승인될 수 있습니다. 제외 신청으로 자리를 비우면 순서대로 배정됩니다.</div>' : '') +
+        '<details><summary class="helper" style="cursor:pointer">사용 중인 사용인 ' + t.used + '명 보기</summary><div class="chips" style="margin-top:6px">' + (t.used_list || []).map(function (u) { return '<span class="chip">' + esc(u.name) + (u.br ? ' · ' + esc(u.br) : '') + '</span>'; }).join('') + '</div></details></div><hr class="rule">';
+    }
     html += '<div class="sec"><h2 class="sec-title">' + esc(S.boot.scope) + ' 신청 진행상황</h2><p class="sec-desc">' + monthKo(data.month) + ' 배정분 · 범위 안의 사용인만 표시됩니다. 산하 사용인 대신 신규·제외 신청을 올리거나, 처리 전 신청을 취소할 수 있습니다.</p>' +
       '<div class="kpis"><div class="kpi accent"><span class="kpi-label">신규 신청</span><span class="kpi-value mono">' + cnt.nw + '<small>건</small></span></div>' +
       '<div class="kpi warn"><span class="kpi-label">제외 신청</span><span class="kpi-value mono">' + cnt.ex + '<small>건</small></span></div>' +
@@ -370,6 +397,10 @@
       var dup = regions.filter(function (r, i) { return regions.indexOf(r) !== i; });
       if (dup.length) { toast('같은 지역을 두 번 선택했습니다: ' + dup[0], 'stop'); return; }
       payload.regions = regions;
+      if (isManager() && S.hqTo && S.hqTo.full) {
+        var tgt = $('a-who').value, already = (S.hqTo.used_list || []).some(function (u) { return String(u.no) === String(tgt); });
+        if (!already && !window.confirm(toAlertText(S.hqTo))) return;
+      }
       if (!(await confirmNotices())) return;
     }
     var btn = $('a-submit'); btn.disabled = true; btn.textContent = '업로드 중…';
@@ -677,7 +708,7 @@
     el.innerHTML = loadingHtml('관리 데이터를 불러오는 중…');
     try {
       var r = await Promise.all([call('admin.applications'), call('admin.feedbacks'), call('admin.pipeline'), call('admin.mail'), call('admin.config'), call('admin.logs', { limit: 40 })]);
-      A = { apps: r[0].applications, month: r[0].month, fbs: r[1].rows, steps: r[2].steps, mails: r[3].mails, cfg: r[4].config, logs: r[5].rows };
+      A = { apps: r[0].applications, month: r[0].month, toByHq: r[0].to_by_hq || {}, fbs: r[1].rows, steps: r[2].steps, mails: r[3].mails, cfg: r[4].config, logs: r[5].rows };
     } catch (e) { el.innerHTML = errorHtml(e); return; }
     var h = '';
 
@@ -688,12 +719,12 @@
     /* 접수함 */
     h += '<div class="sec"><h2 class="sec-title">신청 접수함</h2><p class="sec-desc">신청서 파일을 열어 확인하고 상태를 바꿉니다. 여러 건을 체크해 한 번에 처리하거나, 파이썬 5번 결과 파일을 올려 일괄 반영할 수 있습니다.</p>' +
       '<div class="bulkbar"><span>선택 <span class="cnt" id="b-cnt">0</span>건</span><select id="b-status"><option value="">상태 선택</option>' + STATUS_FLOW.slice(1).concat(['반려']).map(function (s) { return '<option>' + s + '</option>'; }).join('') + '</select>' +
-      '<input id="b-reason" placeholder="사유 (선택)" style="flex:1;min-width:140px"><button class="btn btn-sm" type="button" id="b-apply">선택 건 일괄 변경</button>' +
+      '<input id="b-reason" placeholder="사유 (선택)" style="flex:1;min-width:140px"><button class="btn-ghost btn-sm" type="button" id="b-reason-to" title="사유 칸에 TO 초과 문구를 넣습니다">TO 초과 사유</button><button class="btn btn-sm" type="button" id="b-apply">선택 건 일괄 변경</button>' +
       '<button class="btn-ghost btn-sm" type="button" data-up="allocations">배정 결과 파일로 일괄 반영</button><button class="btn-ghost btn-sm" type="button" id="b-sample">결과 파일 샘플</button></div>' +
       '<div class="table-wrap"><table><thead><tr><th><input type="checkbox" id="b-all"></th><th>접수번호</th><th>신청자</th><th>희망지역</th><th>신청서</th><th>상태</th><th>사유</th></tr></thead><tbody>';
     if (!A.apps.length) h += '<tr><td colspan="7" class="dash">이번 달 신청이 없습니다.</td></tr>';
     A.apps.forEach(function (a, i) {
-      h += '<tr><td><input type="checkbox" data-sel="' + i + '"></td><td class="mono">' + esc(a.id.slice(3)) + (a.resend ? '<span class="cell-sub" style="color:var(--warn)">재발송 요청</span>' : '') + '</td><td class="name">' + esc(a.name) + (a.type === '제외' ? ' ' + pillOf('제외 신청') : '') + '<span class="cell-sub">' + esc([a.hq, a.br].filter(Boolean).join(' · ')) + (a.by ? ' · 대리 ' + esc(a.by) : '') + '</span></td><td>' + (a.type === '제외' ? '<span class="dash">—</span>' : esc(a.regions) + ' · ' + a.qty) + '</td>' +
+      h += '<tr><td><input type="checkbox" data-sel="' + i + '"></td><td class="mono">' + esc(a.id.slice(3)) + (a.resend ? '<span class="cell-sub" style="color:var(--warn)">재발송 요청</span>' : '') + '</td><td class="name">' + esc(a.name) + (a.type === '제외' ? ' ' + pillOf('제외 신청') : '') + '<span class="cell-sub">' + esc([a.hq, a.br].filter(Boolean).join(' · ')) + (a.by ? ' · 대리 ' + esc(a.by) : '') + (function () { var t = A.toByHq && A.toByHq[a.hq]; return t ? ' · <span style="color:' + (t.full ? 'var(--stop)' : 'var(--sub)') + '">TO ' + t.used + '/' + t.limit + (t.full ? ' 초과' : '') + '</span>' : ''; })() + '</span></td><td>' + (a.type === '제외' ? '<span class="dash">—</span>' : esc(a.regions) + ' · ' + a.qty) + '</td>' +
         '<td><a class="link thumb-hover" data-thumb="' + esc((String(a.file_url || '').match(/\/d\/([^\/]+)/) || [])[1] || '') + '" href="' + esc(a.file_url) + '" target="_blank" rel="noopener">열기</a></td>' +
         '<td><select data-app="' + i + '">' + STATUS_FLOW.concat(['반려']).map(function (s) { return '<option' + (s === a.status ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></td>' +
         '<td><input data-reason="' + i + '" value="' + esc(a.reason) + '" placeholder="사유 · 메모" style="min-width:160px"></td></tr>';
@@ -757,6 +788,9 @@
       '<div class="row3"><div class="field"><label for="c-regions">희망지역 목록 (쉼표, 표시 순서)</label><input id="c-regions" value="' + esc(A.cfg.regions || REGIONS.join(',')) + '"></div>' +
       '<div class="field"><label for="c-qty">기본 배정수량</label><input id="c-qty" class="mono" inputmode="numeric" value="' + esc(A.cfg.apply_qty_default || '18') + '"></div>' +
       '<div class="field"><label for="c-qtyrules">직책별 수량 (직책=수량, 쉼표)</label><input id="c-qtyrules" class="mono" value="' + esc(A.cfg.apply_qty_rules || '') + '" placeholder="예: SL=20,지점장=0"></div></div>' +
+      '<div class="row3"><div class="field"><label for="c-to">본부 TO 기본값 (명)</label><input id="c-to" class="mono" inputmode="numeric" value="' + esc(A.cfg.hq_to_default || '10') + '"></div>' +
+      '<div class="field"><label for="c-torules">본부별 TO 예외 (본부명=수, 쉼표)</label><input id="c-torules" value="' + esc(A.cfg.hq_to_rules || '') + '" placeholder="예: 리치본부=12"></div>' +
+      '<div class="field"><label for="c-hqlist">본부 드롭다운에 추가할 본부명 (쉼표)</label><input id="c-hqlist" value="' + esc(A.cfg.hq_list || '') + '" placeholder="명단에 없는 본부를 미리 등록"></div></div>' +
       '<div class="field"><label for="c-pw">관리자 비밀번호 변경 (8자 이상, 비우면 유지)</label><input id="c-pw" type="password" autocomplete="new-password"></div>' +
       '<div class="field"><label for="c-results">컨택결과 허용값 (쉼표 구분)</label><input id="c-results" value="' + esc(A.cfg.feedback_results || '') + '"></div>' +
       '<div class="field"><label for="c-headers">피드백 열 제목 (쉼표 구분 · 순서 포함)</label><input id="c-headers" value="' + esc(A.cfg.feedback_headers || '') + '"></div>' +
@@ -776,6 +810,7 @@
     var busy = false;
     async function run(fn, okMsg) { if (busy) return; busy = true; try { await fn(); if (okMsg) toast(okMsg, 'ok'); await renderAdmin(); } catch (e) { toast(e.message, 'stop'); } finally { busy = false; } }
 
+    $('b-reason-to').addEventListener('click', function () { $('b-reason').value = '본부 TO(' + (A.cfg.hq_to_default || '10') + '명) 초과'; $('b-status').value = '반려'; });
     $('c-month-save').addEventListener('click', function () { var m = $('c-month').value.trim(); run(async function () { await call('admin.config', { set: { current_month: m } }); S.boot.month = m; $('m-sub').textContent = monthKo(m) + ' 배정분'; }, '배정월을 ' + m + ' 로 바꿨습니다.'); });
 
     /* 접수함 */
@@ -850,7 +885,8 @@
     });
     $('c-save').addEventListener('click', function () {
       var set = { form_file_id: $('c-form').value.trim(), feedback_results: $('c-results').value.trim(), feedback_headers: $('c-headers').value.trim(),
-                  regions: $('c-regions').value.trim(), apply_qty_default: $('c-qty').value.trim(), apply_qty_rules: $('c-qtyrules').value.trim() };
+                  regions: $('c-regions').value.trim(), apply_qty_default: $('c-qty').value.trim(), apply_qty_rules: $('c-qtyrules').value.trim(),
+                  hq_to_default: $('c-to').value.trim(), hq_to_rules: $('c-torules').value.trim(), hq_list: $('c-hqlist').value.trim() };
       var pw = $('c-pw').value.trim(); if (pw) set.admin_password = pw;
       run(async function () { await call('admin.config', { set: set }); S.boot = await call('me.bootstrap'); }, '설정을 저장했습니다.');
     });
