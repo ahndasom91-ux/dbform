@@ -30,6 +30,7 @@
   function monthKo(m) { return m ? m.slice(0, 4) + '년 ' + parseInt(m.slice(5), 10) + '월' : ''; }
   /* ── 접수 기간 (서버 config apply_open·apply_close·feedback_open·feedback_close · public.info.windows / me.bootstrap.config.windows) ── */
   function dateKo(ymd) { var m = String(ymd || '').match(/^(\d{4})-(\d{2})-(\d{2})$/); if (!m) return String(ymd || ''); var d = new Date(+m[1], +m[2] - 1, +m[3]); return parseInt(m[2], 10) + '월 ' + parseInt(m[3], 10) + '일(' + '일월화수목금토'[d.getDay()] + ')'; }
+  function qtyNote(n) { n = parseInt(n, 10); return (n > 0 ? '배정수량은 기본 ' + n + '건이며, ' : '') + '지역별 수량이 부족한 경우 기본 수량보다 적게 배정될 수 있습니다.'; }
   function windowOf(kind) { var w = (S.boot && S.boot.config && S.boot.config.windows) || (P.info && P.info.windows) || {}; return w[kind] || { state: 'always', is_open: true }; }
   function windowLabel(w) { if (!w || w.state === 'always') return '상시 접수'; if (w.open && w.close) return dateKo(w.open) + ' ~ ' + dateKo(w.close); if (w.open) return dateKo(w.open) + '부터'; return dateKo(w.close) + '까지'; }
   /** 접수 기간 안내 HTML. 열려 있고 기간이 없으면 빈 문자열. */
@@ -84,6 +85,7 @@
       var info = await DB.api('public.info');
       P.info = info;
       renderPublicWindow();
+      var qn = $('p-qty-note'); if (qn) qn.textContent = qtyNote(info.apply_qty_default);
       $('p-r1').innerHTML = publicRegionOptions(false); $('p-r2').innerHTML = publicRegionOptions(true); $('p-r3').innerHTML = publicRegionOptions(true);
       P.hqs = info.hqs_all || info.hqs || [];
       var fid = (String(info.form_url || '').match(/\/d\/([^\/]+)/) || [])[1] || '';
@@ -328,7 +330,7 @@
       '<button class="upload-btn" type="button" id="a-file">📎 사진·파일 선택<small>' + (IS_ANDROID ? '사진(이미지)' : 'PDF 또는 이미지') + '</small></button></div><div id="a-filechip"></div></div>' +
       (type === '제외'
         ? '<div class="stepcard"><div class="sc-head"><div class="sc-no">3</div><div><div class="sc-title">제외 사유</div></div></div><div class="field"><textarea id="a-memo" placeholder="예: 다음 달부터 휴직 / 활동 중단"></textarea></div></div>'
-        : '<div class="stepcard"><div class="sc-head"><div class="sc-no">3</div><div><div class="sc-title">희망지역 (1~3순위)</div><div class="sc-desc">1순위부터 채워지고 부족하면 2·3순위로 넘어갑니다.</div></div></div>' +
+        : '<div class="stepcard"><div class="sc-head"><div class="sc-no">3</div><div><div class="sc-title">희망지역 (1~3순위)</div><div class="sc-desc">1순위부터 채워지고 부족하면 2·3순위로 넘어갑니다. ' + esc(qtyNote(S.boot.config.apply_qty_default)) + '</div></div></div>' +
           '<div class="fields"><div class="row3">' +
           '<div class="field"><label for="a-r1">1순위 <span class="req">*</span></label><select id="a-r1">' + regionOptions(false) + '</select></div>' +
           '<div class="field"><label for="a-r2">2순위</label><select id="a-r2">' + regionOptions(true) + '</select></div>' +
@@ -905,12 +907,12 @@
       '<span class="helper">업로드하면 Drive 「양식」 폴더(<a class="link" href="' + esc(A.cfg.forms_folder_url) + '" target="_blank" rel="noopener">열기</a>)에 저장되고 링크 보기 권한으로 공유돼 사용인 화면의 「신청서 양식 열기」에 바로 연결됩니다. 직접 올린 파일은 아래 ID 칸에 붙여 넣어도 됩니다.</span>' +
       '<input id="c-form" class="mono" value="' + esc(A.cfg.form_file_id || '') + '" placeholder="Drive 파일 ID (링크의 /d/ 와 /view 사이)"></div>' +
       '<div class="row3"><div class="field"><label for="c-regions">희망지역 목록 (쉼표, 표시 순서)</label><input id="c-regions" value="' + esc(A.cfg.regions || REGIONS.join(',')) + '"></div>' +
-      '<div class="field"><label for="c-qty">기본 배정수량</label><input id="c-qty" class="mono" inputmode="numeric" value="' + esc(A.cfg.apply_qty_default || '18') + '"></div>' +
+      '<div class="field"><label for="c-qty">기본 배정수량</label><input id="c-qty" class="mono" inputmode="numeric" value="' + esc(A.cfg.apply_qty_default || '13') + '"></div>' +
       '<div class="field"><label for="c-qtyrules">직책별 수량 (직책=수량, 쉼표)</label><input id="c-qtyrules" class="mono" value="' + esc(A.cfg.apply_qty_rules || '') + '" placeholder="예: SL=20,지점장=0"></div></div>' +
       '<div class="row3"><div class="field"><label for="c-to">본부 TO 기본값 (명)</label><input id="c-to" class="mono" inputmode="numeric" value="' + esc(A.cfg.hq_to_default || '10') + '"></div>' +
       '<div class="field"><label for="c-torules">본부별 TO 예외 (본부명=수, 쉼표)</label><input id="c-torules" value="' + esc(A.cfg.hq_to_rules || '') + '" placeholder="예: 리치본부=12"></div>' +
       '<div class="field"><label for="c-hqlist">본부 드롭다운에 추가할 본부명 (쉼표)</label><input id="c-hqlist" value="' + esc(A.cfg.hq_list || '') + '" placeholder="명단에 없는 본부를 미리 등록"></div></div>' +
-      '<b style="font-size:12.5px;display:block;margin-top:6px">접수 기간 <span class="helper">(비우면 상시 접수 · 시작일 00:00 ~ 종료일 23:59 · 사이트 화면과 서버 모두에서 기간 밖 제출을 막습니다)</span></b>' +
+      '<b style="font-size:12.5px;display:block;margin-top:6px">접수 기간 <span class="helper">(비우면 상시 접수 · 시작일 00:00 ~ 종료일 23:59 · 기간 밖 제출은 화면·서버에서 모두 막힘 · 종료일을 저장하면 아래 「일정」의 신청서/피드백 마감 줄에 자동 반영)</span></b>' +
       '<div class="row2"><div class="field"><label for="c-aopen">신청서 접수 시작</label><input id="c-aopen" type="date" value="' + esc(A.cfg.apply_open || '') + '"></div><div class="field"><label for="c-aclose">신청서 접수 종료</label><input id="c-aclose" type="date" value="' + esc(A.cfg.apply_close || '') + '"></div></div>' +
       '<div class="row2"><div class="field"><label for="c-fopen">피드백 접수 시작</label><input id="c-fopen" type="date" value="' + esc(A.cfg.feedback_open || '') + '"></div><div class="field"><label for="c-fclose">피드백 접수 종료</label><input id="c-fclose" type="date" value="' + esc(A.cfg.feedback_close || '') + '"></div></div>' +
       '<p class="helper" style="margin:0">지금 상태 — 신청서: ' + esc(windowLabel(((A.cfg.windows || {}).apply) || windowOf('apply'))) + ' · 피드백: ' + esc(windowLabel(((A.cfg.windows || {}).feedback) || windowOf('feedback'))) + '</p>' +
