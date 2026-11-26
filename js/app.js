@@ -24,7 +24,7 @@
     var m = { '배정': 'ok', '배정완료': 'ok', '제출완료': 'ok', '성공': 'ok', '완료': 'ok', '메일 발송 완료': 'ok', '제외완료': 'ok',
       '미배정': 'stop', '반려': 'stop', '보완필요': 'stop', '거부': 'stop', '실패': 'stop', '제외 신청': 'stop',
       '보류': 'wait', '검토중': 'wait', '부분제출': 'wait', '배정대기': 'wait', '처리대기': 'wait', '대기': 'wait', '발송 준비 중': 'wait',
-      '미제출': 'neutral', '미신청': 'neutral', '준비 중': 'neutral', '접수': 'info', '서류확인': 'info', '모집인코드확인': 'info' };
+      '등록됨': 'ok', '미제출': 'neutral', '미신청': 'neutral', '준비 중': 'neutral', '접수': 'info', '서류확인': 'info', '모집인코드확인': 'info' };
     return '<span class="pill ' + (m[status] || 'neutral') + '">' + esc(status) + '</span>';
   }
   function monthKo(m) { return m ? m.slice(0, 4) + '년 ' + parseInt(m.slice(5), 10) + '월' : ''; }
@@ -733,8 +733,8 @@
     var el = $('admin');
     el.innerHTML = loadingHtml('관리 데이터를 불러오는 중…');
     try {
-      var r = await Promise.all([call('admin.applications'), call('admin.feedbacks'), call('admin.pipeline'), call('admin.mail'), call('admin.config'), call('admin.logs', { limit: 40 })]);
-      A = { apps: r[0].applications, month: r[0].month, toByHq: r[0].to_by_hq || {}, fbs: r[1].rows, steps: r[2].steps, mails: r[3].mails, cfg: r[4].config, logs: r[5].rows };
+      var r = await Promise.all([call('admin.applications'), call('admin.feedbacks'), call('admin.pipeline'), call('admin.mail'), call('admin.config'), call('admin.logs', { limit: 40 }), call('admin.users')]);
+      A = { apps: r[0].applications, month: r[0].month, toByHq: r[0].to_by_hq || {}, fbs: r[1].rows, steps: r[2].steps, mails: r[3].mails, cfg: r[4].config, logs: r[5].rows, users: r[6].users || [] };
     } catch (e) { el.innerHTML = errorHtml(e); return; }
     var h = '';
 
@@ -802,6 +802,12 @@
       '<div class="fields"><div class="field"><label for="n-main">메인 유의사항 (신청 탭 상단)</label><textarea id="n-main" style="min-height:110px"></textarea></div>' +
       '<div class="field"><label for="n-file">배정파일 유의사항 (배정·피드백 탭)</label><textarea id="n-file" style="min-height:110px"></textarea></div>' +
       '<div class="field"><label for="n-notice">공지 (일정 탭 · "제목 | 내용" 형식)</label><textarea id="n-notice" style="min-height:70px"></textarea></div><button class="btn-ghost btn-sm" type="button" id="n-save">유의사항·공지 저장</button></div></div></div><hr class="rule">';
+
+    /* 사용인 관리 (휴대폰 변경) */
+    h += '<div class="sec"><h2 class="sec-title">사용인 휴대폰 변경 <span class="helper">' + A.users.length + '명 등록</span></h2>' +
+      '<p class="sec-desc">사용인번호나 이름으로 찾아 새 번호를 넣고 <b>변경</b>을 누르면 서버가 해시로 저장합니다. 번호 원문은 어디에도 남지 않으며, 로그에는 뒤 4자리만 기록됩니다.</p>' +
+      '<div class="bulkbar"><input id="u-q" placeholder="사용인번호 · 이름 · 본부로 검색" style="flex:1;min-width:200px" autocomplete="off"><span class="helper" id="u-cnt"></span></div>' +
+      '<div class="table-wrap"><table><thead><tr><th>사용인번호</th><th>이름</th><th>소속</th><th>역할 · 상태</th><th>휴대폰</th><th>새 번호</th><th></th></tr></thead><tbody id="u-body"><tr><td colspan="7" class="dash">검색어를 입력하면 해당 사용인이 표시됩니다.</td></tr></tbody></table></div></div><hr class="rule">';
 
     /* 설정 */
     var roles = String(A.cfg.enabled_roles || '').split(',');
@@ -903,6 +909,36 @@
       $('n-notice').value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean).forEach(function (t) { var p = t.split('|'); rows.push({ '구분': '공지', '게시일': today, '제목': p.length > 1 ? p[0].trim() : '공지', '내용': (p.length > 1 ? p.slice(1).join('|') : t).trim(), '노출여부': 'Y' }); });
       run(async function () { var r = await call('admin.notices', { rows: rows }); var b = await call('me.bootstrap'); S.boot = b; }, '유의사항·공지를 저장했습니다.');
     });
+
+    /* 사용인 휴대폰 변경 */
+    (function () {
+      var q = $('u-q'), body = $('u-body'), cnt = $('u-cnt');
+      function renderUsers() {
+        var kw = q.value.trim().toLowerCase();
+        if (!kw) { body.innerHTML = '<tr><td colspan="7" class="dash">검색어를 입력하면 해당 사용인이 표시됩니다.</td></tr>'; cnt.textContent = ''; return; }
+        var hit = A.users.filter(function (u) { return [u.no, u.name, u.hq, u.unit, u.br].some(function (v) { return String(v || '').toLowerCase().indexOf(kw) >= 0; }); });
+        cnt.textContent = hit.length ? hit.length + '명' + (hit.length > 30 ? ' (30명까지 표시)' : '') : '일치하는 사용인이 없습니다';
+        body.innerHTML = hit.slice(0, 30).map(function (u) {
+          return '<tr><td class="mono">' + esc(u.no) + '</td><td class="name">' + esc(u.name) + '</td><td>' + esc([u.hq, u.unit, u.br].filter(Boolean).join(' · ')) + '</td>' +
+            '<td>' + esc(u.role) + (u.status ? ' · ' + esc(u.status) : '') + (u.active ? '' : ' <span class="helper" style="color:var(--warn)">사용 N</span>') + '</td>' +
+            '<td>' + (u.has_phone ? pillOf('등록됨') : '<span class="dash">없음</span>') + '</td>' +
+            '<td><input data-phone="' + esc(u.no) + '" inputmode="tel" placeholder="010-0000-0000" style="min-width:140px" autocomplete="off"></td>' +
+            '<td><button class="btn btn-sm" type="button" data-setphone="' + esc(u.no) + '">변경</button></td></tr>';
+        }).join('') || '<tr><td colspan="7" class="dash">일치하는 사용인이 없습니다.</td></tr>';
+      }
+      q.addEventListener('input', renderUsers);
+      body.addEventListener('keydown', function (e) { var t = e.target; if (e.key === 'Enter' && t.dataset && t.dataset.phone) { e.preventDefault(); var b = body.querySelector('[data-setphone="' + t.dataset.phone + '"]'); if (b) b.click(); } });
+      body.addEventListener('click', function (e) {
+        var b = e.target.closest && e.target.closest('[data-setphone]'); if (!b) return;
+        var no = b.dataset.setphone, inp = body.querySelector('[data-phone="' + no + '"]'), phone = (inp.value || '').replace(/\D/g, '');
+        var u = A.users.filter(function (x) { return x.no === no; })[0] || {};
+        if (phone.length < 9) { toast('휴대폰번호를 다시 확인해 주세요. (숫자 9자리 이상)', 'stop'); inp.focus(); return; }
+        if (!window.confirm((u.name || no) + ' (' + no + ') 의 휴대폰번호를\n' + inp.value.trim() + ' 로 바꿀까요?\n\n이후 로그인·신청서 제출은 이 번호로만 됩니다.')) return;
+        var kw = q.value;
+        run(async function () { var r = await call('admin.setPhone', { no: no, phone: phone }); A._lastQ = kw; if (!r.changed) toast('기존 번호와 같아 바뀐 내용이 없습니다.', 'warn'); }, u.name + ' 휴대폰번호를 바꿨습니다.');
+      });
+      if (A._lastQ) { q.value = A._lastQ; A._lastQ = ''; renderUsers(); }
+    })();
 
     /* 설정 */
     $('c-roles-save').addEventListener('click', function () {

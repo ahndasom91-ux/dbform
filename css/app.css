@@ -278,6 +278,7 @@
   .toast { padding: 11px 14px; border-radius: 12px; background: var(--text); color: var(--bg); font-size: 12.5px; box-shadow: var(--shadow); }
   .toast.stop { background: var(--stop); color: #fff; }
   .toast.ok { background: var(--ok); color: #fff; }
+  .toast.warn { background: var(--warn); color: #fff; }
 
   /* ---- 실서비스 추가 ---- */
   .loading { display:flex; flex-direction:column; align-items:center; gap:10px; padding:40px 20px; color:var(--sub); font-size:13px; }
