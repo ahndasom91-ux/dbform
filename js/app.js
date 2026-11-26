@@ -152,10 +152,11 @@
       list.hidden = false; inp.setAttribute('aria-expanded', 'true');
     }
     function close() { list.hidden = true; inp.setAttribute('aria-expanded', 'false'); idx = -1; }
-    function pick(v) { inp.value = v; close(); inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true })); }
+    var picking = false;
+    function pick(v) { picking = true; inp.value = v; inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true })); picking = false; close(); }
     btn.addEventListener('click', function () { if (list.hidden) { render(true); inp.focus(); } else close(); });
     inp.addEventListener('focus', function () { render(false); });
-    inp.addEventListener('input', function () { render(false); });
+    inp.addEventListener('input', function () { if (!picking) render(false); });
     inp.addEventListener('keydown', function (e) {
       var lis = list.querySelectorAll('li[data-v]');
       if (e.key === 'ArrowDown' && lis.length) { e.preventDefault(); if (list.hidden) render(false); idx = Math.min(idx + 1, lis.length - 1); lis.forEach(function (l, i) { l.classList.toggle('active', i === idx); }); lis[idx].scrollIntoView({ block: 'nearest' }); }
