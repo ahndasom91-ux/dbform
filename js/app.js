@@ -67,7 +67,7 @@
       var info = await DB.api('public.info');
       P.info = info;
       $('p-r1').innerHTML = publicRegionOptions(false); $('p-r2').innerHTML = publicRegionOptions(true); $('p-r3').innerHTML = publicRegionOptions(true);
-      $('hq-list').innerHTML = (info.hqs_all || info.hqs || []).map(function (x) { return '<option value="' + esc(x) + '">'; }).join('');
+      P.hqs = info.hqs_all || info.hqs || [];
       var fid = (String(info.form_url || '').match(/\/d\/([^\/]+)/) || [])[1] || '';
       $('p-formlink').innerHTML = fid
         ? '<a class="btn-ghost" href="' + esc(info.form_url) + '" target="_blank" rel="noopener" style="text-align:center;text-decoration:none">양식 열기</a>' +
@@ -141,6 +141,31 @@
     return ok;
   }
   ['p-no', 'p-name', 'p-hq', 'p-phone', 'p-r1'].forEach(function (id) { $(id).addEventListener('input', publicReady); $(id).addEventListener('change', publicReady); });
+  // 본부 콤보박스: ▼ 누르면 전체 목록, 입력하면 포함 검색, 목록에 없으면 직접 입력 허용
+  (function () {
+    var inp = $('p-hq'), btn = $('hq-btn'), list = $('hq-list'), box = $('hq-combo'), idx = -1;
+    function items() { var q = inp.value.trim().toLowerCase(); return (P.hqs || []).filter(function (h) { return !q || h.toLowerCase().indexOf(q) >= 0; }); }
+    function render(all) {
+      var arr = all ? (P.hqs || []) : items(); idx = -1;
+      list.innerHTML = arr.length ? arr.map(function (h) { return '<li data-v="' + esc(h) + '">' + esc(h) + '</li>'; }).join('')
+        : '<li class="empty">' + (P.hqs && P.hqs.length ? '일치하는 본부가 없습니다. 입력한 이름 그대로 접수됩니다.' : '등록된 본부가 아직 없습니다. 본부명을 직접 입력하세요.') + '</li>';
+      list.hidden = false; inp.setAttribute('aria-expanded', 'true');
+    }
+    function close() { list.hidden = true; inp.setAttribute('aria-expanded', 'false'); idx = -1; }
+    function pick(v) { inp.value = v; close(); inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true })); }
+    btn.addEventListener('click', function () { if (list.hidden) { render(true); inp.focus(); } else close(); });
+    inp.addEventListener('focus', function () { render(false); });
+    inp.addEventListener('input', function () { render(false); });
+    inp.addEventListener('keydown', function (e) {
+      var lis = list.querySelectorAll('li[data-v]');
+      if (e.key === 'ArrowDown' && lis.length) { e.preventDefault(); if (list.hidden) render(false); idx = Math.min(idx + 1, lis.length - 1); lis.forEach(function (l, i) { l.classList.toggle('active', i === idx); }); lis[idx].scrollIntoView({ block: 'nearest' }); }
+      else if (e.key === 'ArrowUp' && lis.length) { e.preventDefault(); idx = Math.max(idx - 1, 0); lis.forEach(function (l, i) { l.classList.toggle('active', i === idx); }); lis[idx].scrollIntoView({ block: 'nearest' }); }
+      else if (e.key === 'Enter') { if (!list.hidden && idx >= 0 && lis[idx]) { e.preventDefault(); pick(lis[idx].dataset.v); } else close(); }
+      else if (e.key === 'Escape') close();
+    });
+    list.addEventListener('mousedown', function (e) { var li = e.target.closest('li[data-v]'); if (li) { e.preventDefault(); pick(li.dataset.v); } });
+    document.addEventListener('click', function (e) { if (!box.contains(e.target)) close(); });
+  })();
   // 본부 TO 안내 (본부 입력이 멈추면 조회)
   P.to = null;
   var toTimer = null;
