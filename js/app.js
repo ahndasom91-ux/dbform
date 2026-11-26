@@ -311,7 +311,63 @@
       '<div class="btn-row"><button class="btn" type="button" id="a-submit" disabled>' + (type === '제외' ? '제외 신청 제출' : '신청서 제출') + '</button><button class="btn-ghost" type="button" id="a-close" style="flex:0 0 auto">닫기</button></div></div>';
   }
 
+  /* ───────── 관리자 신청 탭 = 신청 접수함 ───────── */
+  function inboxHtml() {
+    var h = '<div class="sec"><h2 class="sec-title">신청 접수함</h2><p class="sec-desc">신청서 파일을 열어 확인하고 상태를 바꿉니다. 여러 건을 체크해 한 번에 처리하거나, 파이썬 5번 결과 파일을 올려 일괄 반영할 수 있습니다.</p>' +
+      '<div class="bulkbar"><span>선택 <span class="cnt" id="b-cnt">0</span>건</span><select id="b-status"><option value="">상태 선택</option>' + STATUS_FLOW.slice(1).concat(['반려']).map(function (s) { return '<option>' + s + '</option>'; }).join('') + '</select>' +
+      '<input id="b-reason" placeholder="사유 (선택)" style="flex:1;min-width:140px"><button class="btn-ghost btn-sm" type="button" id="b-reason-to" title="사유 칸에 TO 초과 문구를 넣습니다">TO 초과 사유</button><button class="btn btn-sm" type="button" id="b-apply">선택 건 일괄 변경</button>' +
+      '<button class="btn-ghost btn-sm" type="button" data-up="allocations">배정 결과 파일로 일괄 반영</button><button class="btn-ghost btn-sm" type="button" id="b-sample">결과 파일 샘플</button></div>' +
+      '<div class="table-wrap"><table><thead><tr><th><input type="checkbox" id="b-all"></th><th>접수번호</th><th>신청자</th><th>희망지역</th><th>신청서</th><th>상태</th><th>사유</th></tr></thead><tbody>';
+    if (!A.apps.length) h += '<tr><td colspan="7" class="dash">이번 달 신청이 없습니다.</td></tr>';
+    A.apps.forEach(function (a, i) {
+      h += '<tr><td><input type="checkbox" data-sel="' + i + '"></td><td class="mono">' + esc(a.id.slice(3)) + (a.resend ? '<span class="cell-sub" style="color:var(--warn)">재발송 요청</span>' : '') + '</td><td class="name">' + esc(a.name) + (a.type === '제외' ? ' ' + pillOf('제외 신청') : '') + '<span class="cell-sub">' + esc([a.hq, a.br].filter(Boolean).join(' · ')) + (a.by ? ' · 대리 ' + esc(a.by) : '') + (function () { var t = A.toByHq && A.toByHq[a.hq]; return t ? ' · <span style="color:' + (t.full ? 'var(--stop)' : 'var(--sub)') + '">TO ' + t.used + '/' + t.limit + (t.full ? ' 초과' : '') + '</span>' : ''; })() + '</span></td><td>' + (a.type === '제외' ? '<span class="dash">—</span>' : esc(a.regions) + ' · ' + a.qty) + '</td>' +
+        '<td><a class="link thumb-hover" data-thumb="' + esc((String(a.file_url || '').match(/\/d\/([^\/]+)/) || [])[1] || '') + '" href="' + esc(a.file_url) + '" target="_blank" rel="noopener">열기</a></td>' +
+        '<td><select data-app="' + i + '">' + STATUS_FLOW.concat(['반려']).map(function (s) { return '<option' + (s === a.status ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></td>' +
+        '<td><input data-reason="' + i + '" value="' + esc(a.reason) + '" placeholder="사유 · 메모" style="min-width:160px"></td></tr>';
+    });
+    h += '</tbody></table></div></div>';
+    return h;
+  }
+  async function renderInbox() {
+    var el = $('apply');
+    el.innerHTML = loadingHtml('접수함을 불러오는 중…');
+    try {
+      var r = await Promise.all([call('admin.applications'), call('admin.config')]);
+      A.apps = r[0].applications; A.month = r[0].month; A.toByHq = r[0].to_by_hq || {}; A.cfg = r[1].config;
+    } catch (e) { el.innerHTML = errorHtml(e); return; }
+    el.innerHTML = inboxHtml() + '<div id="apply-checks"></div>';
+    var busy = false;
+    bindInbox(el, async function (fn, okMsg) { if (busy) return; busy = true; try { await fn(); if (okMsg) toast(okMsg, 'ok'); await renderInbox(); } catch (e) { toast(e.message, 'stop'); } finally { busy = false; } });
+  }
+
+  /* 접수함 바인딩 — 신청 탭(관리자) 에서 사용. run(fn, okMsg) 는 처리 후 화면을 다시 그린다. */
+  function bindInbox(el, run) {
+    $('b-reason-to').addEventListener('click', function () { $('b-reason').value = '본부 TO(' + (A.cfg.hq_to_default || '10') + '명) 초과'; $('b-status').value = '반려'; });
+    function selected() { return Array.prototype.map.call(el.querySelectorAll('input[data-sel]:checked'), function (c) { return A.apps[+c.dataset.sel].id; }); }
+    function refreshCnt() { $('b-cnt').textContent = selected().length; }
+    el.querySelectorAll('input[data-sel]').forEach(function (c) { c.addEventListener('change', refreshCnt); });
+    $('b-all').addEventListener('change', function () { el.querySelectorAll('input[data-sel]').forEach(function (c) { c.checked = $('b-all').checked; }); refreshCnt(); });
+    $('b-apply').addEventListener('click', function () {
+      var ids = selected(), st = $('b-status').value, rs = $('b-reason').value.trim();
+      if (!ids.length) { toast('처리할 신청을 체크해 주세요.', 'stop'); return; }
+      if (!st) { toast('바꿀 상태를 선택해 주세요.', 'stop'); return; }
+      run(async function () { await call('admin.setStatus', { ids: ids, status: st, reason: rs }); }, ids.length + '건을 ' + st + ' 로 일괄 변경했습니다.');
+    });
+    el.querySelectorAll('select[data-app]').forEach(function (s) { s.addEventListener('change', function () { var a = A.apps[+s.dataset.app]; var rs = el.querySelector('input[data-reason="' + s.dataset.app + '"]').value.trim(); run(async function () { await call('admin.setStatus', { ids: [a.id], status: s.value, reason: rs }); }, a.id + ' → ' + s.value); }); });
+    el.querySelectorAll('input[data-reason]').forEach(function (i) { i.addEventListener('change', function () { var a = A.apps[+i.dataset.reason]; run(async function () { await call('admin.setStatus', { ids: [a.id], status: a.status, reason: i.value.trim() }); }, '사유를 저장했습니다.'); }); });
+    $('b-sample').addEventListener('click', function () {
+      try {
+        var aoa = [['사용인번호', '배정건수', '상태', '미배정사유', '배정월']];
+        A.apps.forEach(function (a) { aoa.push([a.no, a.type === '제외' ? 0 : a.qty, a.type === '제외' ? '보류' : '배정', a.type === '제외' ? '제외 처리' : '', A.month]); });
+        var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), '배정결과');
+        XLSX.writeFile(wb, '배정결과요약_' + A.month.replace('-', '') + '_샘플.xlsx');
+      } catch (e) { toast('파일 저장에 실패했습니다.', 'stop'); }
+    });
+    el.querySelectorAll('[data-up]').forEach(function (b) { b.addEventListener('click', function () { $('adm-input').dataset.kind = b.dataset.up; $('adm-input').value = ''; $('adm-input').click(); }); });
+  }
+
   async function renderApply() {
+    if (isAdmin()) return renderInbox();
     var el = $('apply');
     el.innerHTML = loadingHtml();
     var data;
@@ -742,20 +798,9 @@
     h += '<div class="sec"><div class="result-top"><h2 class="sec-title">현재 배정월 <span class="month-chip">' + esc(A.month) + '</span></h2><div class="btn-row" style="flex:0 0 auto"><input id="c-month" class="mono" value="' + esc(A.month) + '" style="width:110px"><button class="btn-ghost btn-sm" type="button" id="c-month-save">배정월 변경</button></div></div>' +
       '<p class="sec-desc">등록 사용인 ' + A.cfg.user_count + '명 · Drive 폴더 <a class="link" href="' + esc(A.cfg.folder_url) + '" target="_blank" rel="noopener">열기</a>' + (A.cfg.user_count ? '' : ' · <b style="color:var(--stop)">배정자 마스터를 먼저 업로드하세요 (아래 2번)</b>') + '</p></div><hr class="rule">';
 
-    /* 접수함 */
-    h += '<div class="sec"><h2 class="sec-title">신청 접수함</h2><p class="sec-desc">신청서 파일을 열어 확인하고 상태를 바꿉니다. 여러 건을 체크해 한 번에 처리하거나, 파이썬 5번 결과 파일을 올려 일괄 반영할 수 있습니다.</p>' +
-      '<div class="bulkbar"><span>선택 <span class="cnt" id="b-cnt">0</span>건</span><select id="b-status"><option value="">상태 선택</option>' + STATUS_FLOW.slice(1).concat(['반려']).map(function (s) { return '<option>' + s + '</option>'; }).join('') + '</select>' +
-      '<input id="b-reason" placeholder="사유 (선택)" style="flex:1;min-width:140px"><button class="btn-ghost btn-sm" type="button" id="b-reason-to" title="사유 칸에 TO 초과 문구를 넣습니다">TO 초과 사유</button><button class="btn btn-sm" type="button" id="b-apply">선택 건 일괄 변경</button>' +
-      '<button class="btn-ghost btn-sm" type="button" data-up="allocations">배정 결과 파일로 일괄 반영</button><button class="btn-ghost btn-sm" type="button" id="b-sample">결과 파일 샘플</button></div>' +
-      '<div class="table-wrap"><table><thead><tr><th><input type="checkbox" id="b-all"></th><th>접수번호</th><th>신청자</th><th>희망지역</th><th>신청서</th><th>상태</th><th>사유</th></tr></thead><tbody>';
-    if (!A.apps.length) h += '<tr><td colspan="7" class="dash">이번 달 신청이 없습니다.</td></tr>';
-    A.apps.forEach(function (a, i) {
-      h += '<tr><td><input type="checkbox" data-sel="' + i + '"></td><td class="mono">' + esc(a.id.slice(3)) + (a.resend ? '<span class="cell-sub" style="color:var(--warn)">재발송 요청</span>' : '') + '</td><td class="name">' + esc(a.name) + (a.type === '제외' ? ' ' + pillOf('제외 신청') : '') + '<span class="cell-sub">' + esc([a.hq, a.br].filter(Boolean).join(' · ')) + (a.by ? ' · 대리 ' + esc(a.by) : '') + (function () { var t = A.toByHq && A.toByHq[a.hq]; return t ? ' · <span style="color:' + (t.full ? 'var(--stop)' : 'var(--sub)') + '">TO ' + t.used + '/' + t.limit + (t.full ? ' 초과' : '') + '</span>' : ''; })() + '</span></td><td>' + (a.type === '제외' ? '<span class="dash">—</span>' : esc(a.regions) + ' · ' + a.qty) + '</td>' +
-        '<td><a class="link thumb-hover" data-thumb="' + esc((String(a.file_url || '').match(/\/d\/([^\/]+)/) || [])[1] || '') + '" href="' + esc(a.file_url) + '" target="_blank" rel="noopener">열기</a></td>' +
-        '<td><select data-app="' + i + '">' + STATUS_FLOW.concat(['반려']).map(function (s) { return '<option' + (s === a.status ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></td>' +
-        '<td><input data-reason="' + i + '" value="' + esc(a.reason) + '" placeholder="사유 · 메모" style="min-width:160px"></td></tr>';
-    });
-    h += '</tbody></table></div></div><hr class="rule">';
+
+    /* 접수함 → 신청 탭 */
+    h += '<div class="sec"><h2 class="sec-title">신청 접수함 <span class="helper">' + A.apps.length + '건</span></h2><p class="sec-desc">신청서 확인·상태 변경은 <a class="link" href="#" data-goto="apply">신청 탭</a>에서 합니다.</p></div><hr class="rule">';
 
     /* 파이프라인 */
     var PY = { 1: ['db_logic_v3_1_fixed.run_all_steps', true, 'DW 추출 xlsx (a·b 시트)', '1단계_DB필터링 (jis/va/del)'], 2: ['applicant_mapper.py', false, '인사정보 + 신청리스트', '관리리스트 + 배정자 마스터'], 3: ['region_supply.py', false, '1단계 jis 시트', '지역별_DB수량.xlsx'], 4: ['assignment_plan_builder.build_plan', true, '3번 + 관리리스트 + 기준월', '배정표.xlsx'], 5: ['db_assign_v3_1.auto_assignment_logic', true, 'DB 시트 + 배정표', '자동배정 결과 + 배정결과요약 + 효율요약'], 6: ['split_and_mask.py', false, '5번 DB_처리결과 + 배정자 마스터', '배정본_*.xlsx (사용인별 시트)'] };
@@ -841,31 +886,9 @@
     var el = $('admin');
     var busy = false;
     async function run(fn, okMsg) { if (busy) return; busy = true; try { await fn(); if (okMsg) toast(okMsg, 'ok'); await renderAdmin(); } catch (e) { toast(e.message, 'stop'); } finally { busy = false; } }
-
-    $('b-reason-to').addEventListener('click', function () { $('b-reason').value = '본부 TO(' + (A.cfg.hq_to_default || '10') + '명) 초과'; $('b-status').value = '반려'; });
     $('c-month-save').addEventListener('click', function () { var m = $('c-month').value.trim(); run(async function () { await call('admin.config', { set: { current_month: m } }); S.boot.month = m; $('m-sub').textContent = monthKo(m) + ' 배정분'; }, '배정월을 ' + m + ' 로 바꿨습니다.'); });
+    el.querySelectorAll('[data-goto]').forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); selectTab(a.dataset.goto); }); });
 
-    /* 접수함 */
-    function selected() { return Array.prototype.map.call(el.querySelectorAll('input[data-sel]:checked'), function (c) { return A.apps[+c.dataset.sel].id; }); }
-    function refreshCnt() { $('b-cnt').textContent = selected().length; }
-    el.querySelectorAll('input[data-sel]').forEach(function (c) { c.addEventListener('change', refreshCnt); });
-    $('b-all').addEventListener('change', function () { el.querySelectorAll('input[data-sel]').forEach(function (c) { c.checked = $('b-all').checked; }); refreshCnt(); });
-    $('b-apply').addEventListener('click', function () {
-      var ids = selected(), st = $('b-status').value, rs = $('b-reason').value.trim();
-      if (!ids.length) { toast('처리할 신청을 체크해 주세요.', 'stop'); return; }
-      if (!st) { toast('바꿀 상태를 선택해 주세요.', 'stop'); return; }
-      run(async function () { await call('admin.setStatus', { ids: ids, status: st, reason: rs }); }, ids.length + '건을 ' + st + ' 로 일괄 변경했습니다.');
-    });
-    el.querySelectorAll('select[data-app]').forEach(function (s) { s.addEventListener('change', function () { var a = A.apps[+s.dataset.app]; var rs = el.querySelector('input[data-reason="' + s.dataset.app + '"]').value.trim(); run(async function () { await call('admin.setStatus', { ids: [a.id], status: s.value, reason: rs }); }, a.id + ' → ' + s.value); }); });
-    el.querySelectorAll('input[data-reason]').forEach(function (i) { i.addEventListener('change', function () { var a = A.apps[+i.dataset.reason]; run(async function () { await call('admin.setStatus', { ids: [a.id], status: a.status, reason: i.value.trim() }); }, '사유를 저장했습니다.'); }); });
-    $('b-sample').addEventListener('click', function () {
-      try {
-        var aoa = [['사용인번호', '배정건수', '상태', '미배정사유', '배정월']];
-        A.apps.forEach(function (a) { aoa.push([a.no, a.type === '제외' ? 0 : a.qty, a.type === '제외' ? '보류' : '배정', a.type === '제외' ? '제외 처리' : '', A.month]); });
-        var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), '배정결과');
-        XLSX.writeFile(wb, '배정결과요약_' + A.month.replace('-', '') + '_샘플.xlsx');
-      } catch (e) { toast('파일 저장에 실패했습니다.', 'stop'); }
-    });
     $('u-export').addEventListener('click', function () {
       try {
         var aoa = [['접수번호', '배정월', '구분', '사용인번호', '이름', '본부', '사업단', '지점', '희망지역', '희망수량', '메모', '상태', '사유', '접수일시', '대리신청자']];
@@ -955,17 +978,22 @@
   }
 
   /* 관리자 업로드 (xlsx/csv → 객체 배열 → 서버) */
+  function activePanel() { var p = document.querySelector('.panel.active'); return p ? p.id : ''; }
+  async function rerenderActive() { if (activePanel() === 'apply') await renderInbox(); else await renderAdmin(); }
+  function checksBox() { return activePanel() === 'apply' ? $('apply-checks') : $('adm-checks'); }
   $('adm-input').addEventListener('change', async function (e) {
     var f = e.target.files && e.target.files[0], kind = e.target.dataset.kind;
     if (!f) return;
     if (kind === 'form') {   // 신청서 양식: 표가 아니라 파일 자체를 Drive 「양식」 폴더에 저장
-      run(async function () {
+      try {
         await call('admin.uploadForm', { file: { name: f.name, type: f.type || 'application/octet-stream', base64: await DB.fileToBase64(f) } });
         S.boot = await call('me.bootstrap');
-      }, '신청서 양식을 등록했습니다. 사용인 화면의 「신청서 양식 열기」에 연결됩니다.');
+        toast('신청서 양식을 등록했습니다. 사용인 화면의 「신청서 양식 열기」에 연결됩니다.', 'ok');
+        await rerenderActive();
+      } catch (err) { toast(err.message, 'stop'); }
       return;
     }
-    var box = $('adm-checks');
+    var box = checksBox();
     function fail(msg) { box.innerHTML = '<div class="checks"><div class="check fail"><span class="ic">✕</span><div><b>업로드 거부</b><small>' + esc(msg) + '</small></div></div></div>'; toast('업로드가 거부되었습니다.', 'stop'); }
     try {
       var wb = XLSX.read(new Uint8Array(await DB.fileToArrayBuffer(f)), { type: 'array' });
@@ -997,8 +1025,8 @@
         toast('효율 요약을 올렸습니다.', 'ok');
       }
       var keep = box.innerHTML;
-      await renderAdmin();
-      $('adm-checks').innerHTML = keep;
+      await rerenderActive();
+      var nb = checksBox(); if (nb) nb.innerHTML = keep;
     } catch (err) { fail(err.message); }
   });
 
