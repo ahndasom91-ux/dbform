@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/app.css?v=202611261625">
+<link rel="stylesheet" href="css/app.css?v=202611271500">
 <script>
 window.__diagLog = [];
 window.diag = function (m) {
@@ -174,14 +174,25 @@ setTimeout(function () { var l = document.getElementById('l-loading'); if (l && 
   </div>
 </div>
 
+<!-- 배정자 마스터 업로드 방식 선택 -->
+<div class="modal-bg" id="upmode-modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="um-title">
+    <h2 class="sec-title" id="um-title">배정자 마스터를 어떻게 올릴까요?</h2>
+    <p class="sec-desc" id="um-desc"></p>
+    <button class="choice" type="button" data-upmode="merge"><b>바뀐 내용만 반영하기 <span class="choice-tag">권장</span></b><small>파일에 있는 사람은 정보를 고치고, 처음 보는 사람은 추가합니다. 파일에 없는 사람은 그대로 둡니다.<br>파일에서 「사용여부 N」(해촉 등)인 사람은 로그인이 막힙니다.</small></button>
+    <button class="choice danger" type="button" data-upmode="replace"><b>목록 전체 교체하기</b><small>지금 사이트의 사용인 목록을 모두 지우고, 이 파일의 사람들만 남깁니다.<br>파일에 없는 사람(신청 확정을 기다리는 사람 포함)은 사이트에서 사라집니다.</small></button>
+    <div class="btn-row"><button class="btn-ghost" type="button" data-upmode="" style="margin-left:auto">올리지 않고 닫기</button></div>
+  </div>
+</div>
+
 <input type="file" id="cam-input" accept="image/jpeg,image/png,image/webp" capture="environment" hidden>
 <input type="file" id="file-input" accept="application/pdf,image/jpeg,image/png,image/webp" hidden>
 <input type="file" id="fb-input" accept=".xlsx" hidden>
 <input type="file" id="adm-input" accept=".xlsx,.xls,.csv,.pdf,.doc,.docx,.hwp,.hwpx,.png,.jpg,.jpeg" hidden>
 
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" onerror="diagShow('엑셀 라이브러리(cdnjs) 로드 실패')"></script>
-<script src="js/api.js?v=202611261625" onerror="diagShow('api.js 로드 실패')"></script>
-<script src="js/app.js?v=202611261625" onerror="diagShow('app.js 로드 실패')"></script>
+<script src="js/api.js?v=202611271500" onerror="diagShow('api.js 로드 실패')"></script>
+<script src="js/app.js?v=202611271500" onerror="diagShow('app.js 로드 실패')"></script>
 <script>diag("스크립트 로드 완료 (api.js " + (window.DB && DB.api ? "OK" : "없음") + ")");</script>
 </body>
 </html>

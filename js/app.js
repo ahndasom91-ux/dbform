@@ -1030,6 +1030,20 @@
   function activePanel() { var p = document.querySelector('.panel.active'); return p ? p.id : ''; }
   async function rerenderActive() { if (activePanel() === 'apply') await renderInbox(); else await renderAdmin(); }
   function checksBox() { return activePanel() === 'apply' ? $('apply-checks') : $('adm-checks'); }
+  /* 배정자 마스터 업로드 방식 선택 → 'merge' | 'replace' | '' (올리지 않음) */
+  function chooseUploadMode(desc) {
+    return new Promise(function (resolve) {
+      var m = $('upmode-modal'), btns = Array.prototype.slice.call(m.querySelectorAll('[data-upmode]'));
+      $('um-desc').textContent = desc;
+      function close(v) { m.hidden = true; btns.forEach(function (b) { b.onclick = null; }); m.onclick = null; document.removeEventListener('keydown', onKey); resolve(v); }
+      function onKey(ev) { if (ev.key === 'Escape') close(''); }
+      btns.forEach(function (b) { b.onclick = function () { close(b.dataset.upmode); }; });
+      m.onclick = function (ev) { if (ev.target === m) close(''); };
+      document.addEventListener('keydown', onKey);
+      m.hidden = false;
+      btns[0].focus();
+    });
+  }
   $('adm-input').addEventListener('change', async function (e) {
     var f = e.target.files && e.target.files[0], kind = e.target.dataset.kind;
     if (!f) return;
@@ -1055,10 +1069,13 @@
       if (kind === 'users') {
         var extra = header.filter(function (c) { return USERS_ALLOWED.indexOf(c) < 0 && c.indexOf('보험사코드') !== 0; });
         if (extra.length) return fail('허용되지 않은 열: ' + extra.join(', ') + ' (허용: ' + USERS_ALLOWED.join(' · ') + ' · 보험사코드_*)');
-        var mode = window.confirm('기존 사용인 목록을 전부 교체할까요?\n[확인] 전체 교체  /  [취소] 사용인번호 기준으로 갱신·추가') ? 'replace' : 'merge';
+        var nN = rows.filter(function (r) { return String(r['사용여부'] || '').toUpperCase() === 'N'; }).length;
+        var mode = await chooseUploadMode(f.name + ' · ' + rows.length + '명' + (nN ? ' (그중 사용여부 N ' + nN + '명)' : ''));
+        if (!mode) { box.innerHTML = ''; toast('업로드하지 않았습니다.', 'stop'); return; }
+        if (mode === 'replace' && !window.confirm('사이트의 사용인 목록을 모두 지우고 이 파일의 사람들만 남깁니다.\n되돌릴 수 없습니다. 계속할까요?')) { box.innerHTML = ''; toast('업로드하지 않았습니다.', 'stop'); return; }
         box.innerHTML = loadingHtml('업로드 중… (' + rows.length + '명)');
         var r1 = await call('admin.uploadUsers', { rows: rows, mode: mode });
-        box.innerHTML = '<div class="checks"><div class="check pass"><span class="ic">✓</span><div><b>배정자 마스터 업로드 완료</b><small>' + r1.count + '명 · ' + (mode === 'replace' ? '전체 교체' : '갱신·추가') + (r1.no_phone ? ' · 휴대폰 없음 ' + r1.no_phone + '명 (로그인 불가)' : '') + '</small></div></div></div>';
+        box.innerHTML = '<div class="checks"><div class="check pass"><span class="ic">✓</span><div><b>배정자 마스터 업로드 완료</b><small>' + r1.count + '명 · ' + (mode === 'replace' ? '목록 전체 교체' : '바뀐 내용만 반영') + (r1.blocked ? ' · 로그인 차단 ' + r1.blocked + '명' : '') + (r1.no_phone ? ' · 휴대폰 없음 ' + r1.no_phone + '명 (로그인 불가)' : '') + '</small></div></div></div>';
         toast('배정자 마스터 ' + r1.count + '명을 올렸습니다.', 'ok');
       } else if (kind === 'allocations') {
         var month = (rows[0]['배정월'] || A.month || S.boot.month);

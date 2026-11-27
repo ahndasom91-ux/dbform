@@ -262,6 +262,13 @@
   .modal-bg[hidden] { display: none; }
   .modal { width: 100%; max-width: 520px; background: var(--card); border-radius: 14px; padding: 18px 18px 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px; max-height: 90vh; overflow: auto; }
   .modal .switch { align-items: flex-start; line-height: 1.5; }
+  .choice { display: flex; flex-direction: column; gap: 4px; width: 100%; text-align: left; padding: 13px 14px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--card); color: var(--text); cursor: pointer; }
+  .choice b { font-size: 14.5px; }
+  .choice small { font-size: 12.5px; line-height: 1.55; opacity: .8; font-weight: 400; }
+  .choice:hover, .choice:focus-visible { border-color: var(--primary); }
+  .choice.danger:hover, .choice.danger:focus-visible { border-color: var(--stop); }
+  .choice.danger b { color: var(--stop); }
+  .choice-tag { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--primary); color: #fff; font-size: 11px; font-weight: 700; vertical-align: 1px; }
   .modal .switch input { margin-top: 3px; flex: none; }
 
   /* 로그인 */
