@@ -611,8 +611,11 @@
     var al = data.alloc, hist = data.history, last = hist[0] || null, mail = data.mail;
     var h2 = '<div class="sec"><h2 class="sec-title">내 배정목록</h2>';
     if (al && al.status === '배정') {
+      var viaOrg = mail && String(mail['분리단위'] || '사용인') !== '사용인';
       h2 += '<div class="result ' + (mail ? 'ok' : 'warn') + '"><div class="result-top"><div class="result-who">' + monthKo(month) + ' 배정분 <span>· ' + al.count + '건</span></div>' + pillOf(mail ? '메일 발송 완료' : '발송 준비 중') + '</div>' +
-        (mail ? '<dl class="kv"><div class="kv-row"><dt>발송일시</dt><dd class="mono">' + esc(String(mail['발송일시']).replace('T', ' ')) + '</dd></div><div class="kv-row"><dt>수신</dt><dd class="mono">' + esc(mail['수신자'] || '-') + '</dd></div></dl>' : '<p class="sec-desc" style="margin:0">배정목록은 메일로 발송됩니다. 발송되면 여기에 기록이 표시됩니다.</p>') +
+        (mail ? '<dl class="kv"><div class="kv-row"><dt>발송일시</dt><dd class="mono">' + esc(String(mail['발송일시']).replace('T', ' ')) + '</dd></div>' +
+                (viaOrg ? '<div class="kv-row"><dt>발송 대상</dt><dd>' + esc(mail['대상']) + ' ' + esc(mail['분리단위']) + '장 <span class="helper">(배정목록은 소속 ' + esc(mail['분리단위']) + '장에게 전달됩니다. ' + esc(mail['분리단위']) + '장에게 받아 주세요.)</span></dd></div>' : '') +
+                (mail['수신자'] ? '<div class="kv-row"><dt>수신</dt><dd class="mono">' + esc(mail['수신자']) + '</dd></div>' : '') + '</dl>' : '<p class="sec-desc" style="margin:0">배정목록은 메일로 발송됩니다. 발송되면 여기에 기록이 표시됩니다.</p>') +
         '<div class="btn-row"><button class="btn-ghost" type="button" id="f-resend"' + (data.resend_requested ? ' disabled' : '') + '>' + (data.resend_requested ? '재발송 요청됨' : '메일 재발송 요청') + '</button></div></div>';
     } else {
       h2 += '<div class="result"><div class="result-top"><div class="result-who">' + monthKo(month) + ' 배정분</div>' + pillOf(al ? al.status : '미신청') + '</div>' + (al && al.reason ? '<div class="reason">' + esc(al.reason) + '</div>' : '<p class="sec-desc">배정이 확정되면 이 자리에 발송 정보가 표시됩니다.</p>') + '</div>';
@@ -833,7 +836,7 @@
     var el = $('admin');
     el.innerHTML = loadingHtml('관리 데이터를 불러오는 중…');
     try {
-      var r = await Promise.all([call('admin.applications'), call('admin.feedbacks'), call('admin.pipeline'), call('admin.mail'), call('admin.config'), call('admin.logs', { limit: 40 }), call('admin.users')]);
+      var r = await Promise.all([call('admin.applications'), call('admin.feedbacks'), call('admin.pipeline'), call('admin.mail'), call('admin.config'), call('admin.logs', { limit: 100 }), call('admin.users')]);
       A = { apps: r[0].applications, month: r[0].month, toByHq: r[0].to_by_hq || {}, mgrs: r[0].managers_by_hq || {}, fbs: r[1].rows, steps: r[2].steps, mails: r[3].mails, cfg: r[4].config, logs: r[5].rows, users: r[6].users || [] };
     } catch (e) { el.innerHTML = errorHtml(e); return; }
     var h = '';
@@ -876,14 +879,14 @@
 
     /* 메일 기록 */
     h += '<div class="sec"><h2 class="sec-title">배정목록 메일 발송 기록</h2><div class="fields"><div class="row3">' +
-      '<div class="field"><label for="m-unit">분리 단위</label><select id="m-unit"><option>본부</option><option>사업단</option><option>지점</option><option selected>사용인</option></select></div>' +
-      '<div class="field"><label for="m-target">대상 (이름 또는 조직명)</label><input id="m-target" placeholder="김민준 / 강남본부"></div>' +
+      '<div class="field"><label for="m-unit">분리 단위</label><select id="m-unit"><option selected>본부</option><option>사업단</option><option>지점</option><option>사용인</option></select></div>' +
+      '<div class="field"><label for="m-target">대상 (조직명 또는 이름)</label><input id="m-target" list="m-targets" placeholder="리치본부 / 김민준" autocomplete="off"><datalist id="m-targets"></datalist></div>' +
       '<div class="field"><label for="m-count">건수</label><input id="m-count" class="mono" inputmode="numeric" placeholder="12"></div></div>' +
-      '<div class="row2"><div class="field"><label for="m-to">수신 메일 (선택)</label><input id="m-to" placeholder="mj****@..."></div><div class="field"><label>&nbsp;</label><button class="btn-ghost" type="button" id="m-add">발송 기록 추가</button></div></div></div>' +
-      '<div class="table-wrap"><table><thead><tr><th>발송일시</th><th>단위</th><th>대상</th><th>수신</th><th style="text-align:right">건수</th><th>담당</th></tr></thead><tbody>';
-    if (!A.mails.length) h += '<tr><td colspan="6" class="dash">기록이 없습니다.</td></tr>';
-    A.mails.forEach(function (m) { h += '<tr><td class="mono">' + esc(String(m['발송일시']).replace('T', ' ').slice(0, 16)) + '</td><td>' + esc(m['분리단위']) + '</td><td class="name">' + esc(m['대상']) + '</td><td class="mono">' + esc(m['수신자']) + '</td><td class="num mono">' + esc(m['건수']) + '</td><td>' + esc(m['담당자']) + '</td></tr>'; });
-    h += '</tbody></table></div><p class="helper">사용인 단위 기록은 대상 이름이 일치하는 사용인의 화면에 "메일 발송 완료"로 표시됩니다.</p></div><hr class="rule">';
+      '<div class="row2"><div class="field"><label for="m-to">수신 메일 (선택 · 기록용, 비워도 됨)</label><input id="m-to" placeholder="비워도 됩니다"></div><div class="field"><label>&nbsp;</label><button class="btn-ghost" type="button" id="m-add">발송 기록 추가</button></div></div></div>' +
+      '<div class="table-wrap"><table><thead><tr><th>발송일시</th><th>단위</th><th>대상</th><th>수신</th><th style="text-align:right">건수</th><th style="text-align:right">대상 사용인</th><th>담당</th></tr></thead><tbody>';
+    if (!A.mails.length) h += '<tr><td colspan="7" class="dash">기록이 없습니다.</td></tr>';
+    A.mails.forEach(function (m) { h += '<tr><td class="mono">' + esc(String(m['발송일시']).replace('T', ' ').slice(0, 16)) + '</td><td>' + esc(m['분리단위']) + '</td><td class="name">' + esc(m['대상']) + '</td><td class="mono">' + esc(m['수신자']) + '</td><td class="num mono">' + esc(m['건수']) + '</td><td class="num mono">' + (m.covered === undefined ? '-' : (m.covered + (m.covered_assigned !== undefined ? '<span class="cell-sub">배정 ' + m.covered_assigned + '명</span>' : ''))) + '</td><td>' + esc(m['담당자']) + '</td></tr>'; });
+    h += '</tbody></table></div><p class="helper">분리 단위를 <b>본부</b>로 두고 본부명만 적어 기록하면, 그 본부 소속 사용인 전원의 화면에 "메일 발송 완료 · 본부장에게 전달" 로 표시됩니다 (사업단·지점도 같음). 사용인 단위는 이름이 일치하는 사람에게만 표시됩니다. 수신 메일 주소는 기록용이라 비워도 됩니다. 「대상 사용인」은 그 기록이 덮는 사용인 수(이번 달 배정자 수)입니다.</p></div><hr class="rule">';
 
     /* 일정 · 유의사항 */
     h += '<div class="sec"><h2 class="sec-title">일정 · 유의사항 · 공지</h2><p class="sec-desc">일정은 항목 4줄입니다. 유의사항은 한 줄에 하나씩 적습니다.</p><div class="cfg-grid">' +
@@ -922,9 +925,8 @@
       '<button class="btn-ghost btn-sm" type="button" id="c-save">설정 저장</button></div></div></div><hr class="rule">';
 
     /* 로그 */
-    h += '<div class="sec"><h2 class="sec-title">접속 · 업로드 로그 <span class="helper">최근 40건</span></h2><div class="table-wrap"><table><thead><tr><th>일시</th><th>누가</th><th>동작</th><th>결과</th><th>상세</th></tr></thead><tbody>';
-    A.logs.forEach(function (l) { h += '<tr><td class="mono">' + esc(String(l['일시']).replace('T', ' ').slice(5, 16)) + '</td><td class="name">' + esc(l['이름'] || l['사용인번호']) + '</td><td>' + esc(l['동작']) + '</td><td>' + pillOf(l['결과']) + '</td><td class="why">' + esc(l['상세']) + '</td></tr>'; });
-    h += '</tbody></table></div></div>';
+    h += '<div class="sec"><h2 class="sec-title">접속 · 업로드 로그 <span class="helper">최근 ' + A.logs.length + '건 · 10건씩</span></h2><div class="table-wrap"><table><thead><tr><th>일시</th><th>누가</th><th>동작</th><th>결과</th><th>상세</th></tr></thead><tbody id="log-body"></tbody></table></div>' +
+      '<div class="bulkbar" style="justify-content:flex-end"><button class="btn-ghost btn-sm" type="button" id="log-prev">‹ 이전</button><span class="helper" id="log-page"></span><button class="btn-ghost btn-sm" type="button" id="log-next">다음 ›</button></div></div>';
 
     el.innerHTML = h;
     bindAdmin();
@@ -980,6 +982,33 @@
       $('n-notice').value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean).forEach(function (t) { var p = t.split('|'); rows.push({ '구분': '공지', '게시일': today, '제목': p.length > 1 ? p[0].trim() : '공지', '내용': (p.length > 1 ? p.slice(1).join('|') : t).trim(), '노출여부': 'Y' }); });
       run(async function () { var r = await call('admin.notices', { rows: rows }); var b = await call('me.bootstrap'); S.boot = b; }, '유의사항·공지를 저장했습니다.');
     });
+
+    /* 로그 페이지 넘김 (10건) */
+    (function () {
+      var PER = 10, body = $('log-body'), total = Math.max(1, Math.ceil(A.logs.length / PER));
+      S.admLogPage = Math.min(S.admLogPage || 1, total);
+      function draw() {
+        var pg = S.admLogPage, rows = A.logs.slice((pg - 1) * PER, pg * PER);
+        body.innerHTML = rows.length ? rows.map(function (l) { return '<tr><td class="mono">' + esc(String(l['일시']).replace('T', ' ').slice(5, 16)) + '</td><td class="name">' + esc(l['이름'] || l['사용인번호']) + '</td><td>' + esc(l['동작']) + '</td><td>' + pillOf(l['결과']) + '</td><td class="why">' + esc(l['상세']) + '</td></tr>'; }).join('') : '<tr><td colspan="5" class="dash">로그가 없습니다.</td></tr>';
+        $('log-page').textContent = pg + ' / ' + total;
+        $('log-prev').disabled = pg <= 1; $('log-next').disabled = pg >= total;
+      }
+      $('log-prev').addEventListener('click', function () { if (S.admLogPage > 1) { S.admLogPage--; draw(); } });
+      $('log-next').addEventListener('click', function () { if (S.admLogPage < total) { S.admLogPage++; draw(); } });
+      draw();
+    })();
+
+    /* 메일 기록: 대상 자동완성 (분리 단위에 따라 본부/사업단/지점/이름 목록) */
+    (function () {
+      var unitSel = $('m-unit'), dl = $('m-targets'); if (!unitSel || !dl) return;
+      function fill() {
+        var u = unitSel.value, key = { '본부': 'hq', '사업단': 'unit', '지점': 'br', '사용인': 'name' }[u] || 'name', seen = {};
+        var vals = (A.users || []).filter(function (x) { return u === '사용인' ? x.role === '사용인' && x.active : true; }).map(function (x) { return String(x[key] || '').trim(); }).filter(function (v) { if (!v || seen[v]) return false; seen[v] = 1; return true; }).sort();
+        dl.innerHTML = vals.map(function (v) { return '<option value="' + esc(v) + '">'; }).join('');
+        $('m-target').placeholder = u === '사용인' ? '이름' : u + '명';
+      }
+      unitSel.addEventListener('change', fill); fill();
+    })();
 
     /* 사용인 휴대폰 변경 */
     (function () {
