@@ -941,8 +941,9 @@
 
     $('u-export').addEventListener('click', function () {
       try {
-        var aoa = [['접수번호', '배정월', '구분', '사용인번호', '이름', '본부', '사업단', '지점', '희망지역', '희망수량', '메모', '상태', '사유', '접수일시', '대리신청자']];
-        A.apps.forEach(function (a) { aoa.push([a.id, a.month, a.type, a.no, a.name, a.hq, a.unit, a.br, a.regions, a.qty, a.memo, a.status, a.reason, a.at, a.by]); });
+        // 최초신청월·직전배정월·직전피드백 = PC 도구의 업적 컷오프 유예(신청 3개월 이내) · 피드백 미제출 제외 판정에 쓰는 열
+        var aoa = [['접수번호', '배정월', '구분', '사용인번호', '이름', '본부', '사업단', '지점', '희망지역', '희망수량', '메모', '상태', '사유', '접수일시', '대리신청자', '최초신청월', '직전배정월', '직전피드백']];
+        A.apps.forEach(function (a) { aoa.push([a.id, a.month, a.type, a.no, a.name, a.hq, a.unit, a.br, a.regions, a.qty, a.memo, a.status, a.reason, a.at, a.by, a.first_month || '', a.prev_alloc || '', a.prev_fb || '']); });
         var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), 'applications');
         XLSX.writeFile(wb, 'applications_' + A.month.replace('-', '') + '.csv', { bookType: 'csv' });
       } catch (e) { toast('파일 저장에 실패했습니다.', 'stop'); }
@@ -1110,7 +1111,7 @@
         var month = (rows[0]['배정월'] || A.month || S.boot.month);
         box.innerHTML = loadingHtml('일괄 반영 중… (' + rows.length + '명)');
         var r2 = await call('admin.uploadAllocations', { rows: rows, month: month });
-        box.innerHTML = '<div class="checks"><div class="check pass"><span class="ic">✓</span><div><b>배정 결과 일괄 반영 완료</b><small>' + r2.month + ' · ' + r2.count + '명 · 신청 상태도 함께 갱신</small></div></div></div>';
+        box.innerHTML = '<div class="checks"><div class="check pass"><span class="ic">✓</span><div><b>배정 결과 일괄 반영 완료</b><small>' + r2.month + ' · ' + r2.count + '명 · 신청 상태도 함께 갱신' + (r2.rejected ? ' · 반려 ' + r2.rejected + '명 (업적미달 등)' : '') + '</small></div></div></div>';
         toast(r2.count + '명의 배정 결과를 반영했습니다.', 'ok');
       } else {
         var month2 = (rows[0]['배정월'] || A.month || S.boot.month);
